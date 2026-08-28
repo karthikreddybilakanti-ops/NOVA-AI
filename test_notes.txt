@@ -1,0 +1,7 @@
+PROJECT SPECIFICATION: Autonomous Fleet Management
+1. System Architecture Overview
+The autonomous fleet management system coordinates self-driving electric vehicles across urban corridors using low-latency telemetry.
+2. Safety Verification & Edge Processing
+Edge nodes perform real-time collision avoidance and emergency braking decisions within 5 milliseconds.
+3. Fleet Optimization & Charging Infrastructure
+Dynamic routing schedules vehicles to fast-charging depots based on battery state-of-charge and peak electricity pricing.
