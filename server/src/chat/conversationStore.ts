@@ -22,9 +22,9 @@ export class ConversationStore {
       return [
         {
           id: 'nova-smart',
-          name: 'Google Gemini 1.5 Flash',
-          tagline: 'Multimodal general-purpose AI model',
-          description: 'Direct integration with Google Gemini 1.5 Flash for multimodal reasoning and chat.',
+          name: 'Google Gemini 3.6 Flash',
+          tagline: 'Current multimodal Interactions API model',
+          description: 'Direct integration with Google Gemini 3.6 Flash via the Interactions API.',
           badge: 'Active',
           enabled: true,
         },
