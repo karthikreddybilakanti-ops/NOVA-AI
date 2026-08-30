@@ -66,9 +66,16 @@ export class NecessityEngine {
 
         // 6. Personal Identifiers (User Name)
         case 'Personal identifiers': {
-          if (intent.domain === 'writing' || intent.domain === 'casual') {
+          if (
+            intent.domain === 'writing' ||
+            intent.domain === 'casual' ||
+            lowerPrompt.includes('hi ') ||
+            lowerPrompt.includes('hello ') ||
+            lowerPrompt.includes('i am ') ||
+            lowerPrompt.includes('my name is')
+          ) {
             decision = 'REQUIRED';
-            reason = 'User name/identity is relevant for conversational engagement or drafting personal introductions.';
+            reason = 'User name/greeting is preserved for natural conversational engagement.';
           } else {
             decision = 'UNNECESSARY';
             reason = 'Personal identity declaration is unnecessary for general technical or informational inquiries.';
@@ -79,9 +86,17 @@ export class NecessityEngine {
         // 7. Precise Location / Address
         case 'Address':
         case 'Precise location': {
-          if (lowerPrompt.includes('gym') || lowerPrompt.includes('restaurant') || lowerPrompt.includes('weather') || lowerPrompt.includes('travel to')) {
+          if (
+            lowerPrompt.includes('trip') ||
+            lowerPrompt.includes('travel') ||
+            lowerPrompt.includes('itinerary') ||
+            lowerPrompt.includes('gym') ||
+            lowerPrompt.includes('restaurant') ||
+            lowerPrompt.includes('weather') ||
+            lowerPrompt.includes('travel to')
+          ) {
             decision = 'REQUIRED';
-            reason = 'Geographical location is required for localized recommendations.';
+            reason = 'Geographical location / destination is required for itinerary or localized recommendations.';
           } else {
             decision = 'UNNECESSARY';
             reason = 'Precise physical address is not required for this general inquiry.';

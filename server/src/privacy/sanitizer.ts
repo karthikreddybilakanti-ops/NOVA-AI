@@ -37,7 +37,7 @@ export class PromptSanitizer {
       // Check for declarative prefix phrases like:
       // "my account number is", "account number:", "my email is", "password is", "otp is", "my phone is", "my ssn is"
       const prefixMatch = before.match(
-        /(?:(?:my\s+)?(?:bank\s+)?(?:account(?:\s*number|\s*no\.?|\s*#)?|card(?:\s*number)?|cvv|otp|email|phone|ssn|aadhaar|pan|password|secret|pin)\s*(?:is|:|=)?\s*|contact\s+me\s+at\s*|reach\s+me\s+at\s*|here\s+is\s+my\s+\w+\s*:?\s*|my\s+name\s+is\s*)\s*$/i
+        /(?:(?:(?:and|also|,)\s+)?(?:my\s+)?(?:bank\s+)?(?:account(?:\s*number|\s*no\.?|\s*#)?|card(?:\s*number)?|cvv|otp|email(?:\s*address)?|phone(?:\s*number)?|ssn|aadhaar|pan|password|secret|pin)\s*(?:is|:|=)?\s*|contact\s+me\s+at\s*|reach\s+me\s+at\s*|here\s+is\s+my\s+\w+\s*:?\s*)\s*$/i
       );
 
       let newBefore = before;
@@ -48,7 +48,7 @@ export class PromptSanitizer {
       }
 
       // Check for following conjunctions / punctuation
-      const suffixMatch = newAfter.match(/^(\s*(?:and|,|;|\.)\s*)/i);
+      const suffixMatch = newAfter.match(/^(\s*(?:and|also|,|;|\.)\s*)/i);
       if (suffixMatch) {
         newAfter = newAfter.substring(suffixMatch[0].length);
       }
@@ -66,9 +66,14 @@ export class PromptSanitizer {
     let polished = sanitized
       .replace(/\s+/g, ' ')
       .replace(/\bmy\s+my\b/gi, 'my')
+      .replace(/\b(and|also)\s+(and|also)\b/gi, '$1')
+      .replace(/([.!?])\s*(?:and|also|so|then)\s+/gi, '$1 ')
       .replace(/\s+([,;.?!])/g, '$1')
       .replace(/^\s*(?:and|also|so|then|,\s*|\.\s*)\s*/i, '')
       .trim();
+
+    // Clean up empty clauses like "Hi NOVA I am Karthik. . I have..."
+    polished = polished.replace(/([.!?])\s*([.!?])+/g, '$1 ');
 
     // Specific conversational smoothing for banking transactions if necessary
     if (intent && intent.domain === 'banking') {
@@ -79,11 +84,48 @@ export class PromptSanitizer {
         .replace(/can you solve it\??$/i, 'Can you help me solve it?');
     }
 
-    // Capitalize first letter
+    // Capitalize first letter of each sentence if needed
     if (polished.length > 0) {
       polished = polished.charAt(0).toUpperCase() + polished.slice(1);
     }
 
     return polished || rawPrompt;
+  }
+
+  /**
+   * Sanitizes attachment text content by redacting unnecessary sensitive tokens
+   */
+  public sanitizeDocumentText(
+    extractedText: string,
+    detections: DetectedEntity[],
+    decisions: NecessityDecision[]
+  ): string {
+    if (!detections.length || !extractedText) {
+      return extractedText;
+    }
+
+    const unnecessaryEntityIds = new Set(
+      decisions.filter((d) => d.decision === 'UNNECESSARY').map((d) => d.entityId)
+    );
+
+    const entitiesToRedact = detections
+      .filter((d) => unnecessaryEntityIds.has(d.id))
+      .sort((a, b) => b.startIndex - a.startIndex);
+
+    if (!entitiesToRedact.length) {
+      return extractedText;
+    }
+
+    let sanitized = extractedText;
+    for (const entity of entitiesToRedact) {
+      const val = entity.value;
+      if (val && sanitized.includes(val)) {
+        // Redact specific value with category placeholder [REDACTED]
+        const escaped = val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        sanitized = sanitized.replace(new RegExp(escaped, 'g'), '[REDACTED]');
+      }
+    }
+
+    return sanitized;
   }
 }

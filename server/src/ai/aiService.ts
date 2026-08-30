@@ -37,7 +37,7 @@ export class AIService {
 
         let userPromptWithAttachment = sanitizedPrompt;
         if (attachment && attachment.extractedText) {
-          userPromptWithAttachment = `[Attached Document: "${attachment.originalName}"]\n--- Content Begin ---\n${attachment.extractedText.slice(0, 8000)}\n--- Content End ---\n\nUser Question: ${sanitizedPrompt}`;
+          userPromptWithAttachment = `[Attached Document/Image: "${attachment.originalName}"]\n--- Content Begin ---\n${attachment.extractedText.slice(0, 8000)}\n--- Content End ---\n\nUser Question: ${sanitizedPrompt}`;
         }
 
         geminiContents.push({
@@ -75,7 +75,7 @@ export class AIService {
         const apiKey = process.env.OPENAI_API_KEY;
         let promptText = sanitizedPrompt;
         if (attachment && attachment.extractedText) {
-          promptText = `[Attached Document: "${attachment.originalName}"]\n--- Content ---\n${attachment.extractedText.slice(0, 8000)}\n\nQuestion: ${sanitizedPrompt}`;
+          promptText = `[Attached Document/Image: "${attachment.originalName}"]\n--- Content ---\n${attachment.extractedText.slice(0, 8000)}\n\nQuestion: ${sanitizedPrompt}`;
         }
 
         const messages = [
@@ -150,14 +150,35 @@ export class AIService {
     await new Promise((r) => setTimeout(r, delayMs));
 
     // ==========================================
-    // 1. ATTACHMENT / DOCUMENT QUESTION HANDLING
+    // 1. ATTACHMENT / DOCUMENT / IMAGE REASONING
     // ==========================================
     if (attachment && attachment.extractedText) {
       const docText = attachment.extractedText;
       const docName = attachment.originalName;
 
-      if (lower.includes('summarize') || lower.includes('summary') || lower.includes('overview') || lower.includes('what is this document about')) {
-        const sentences = docText.split(/[.!?\n]+/).map((s) => s.trim()).filter((s) => s.length > 20);
+      // Image or document containing a failed transaction
+      if (
+        (docText.toLowerCase().includes('failed') || lower.includes('fail')) &&
+        (docText.toLowerCase().includes('transaction') || docText.toLowerCase().includes('account') || docText.toLowerCase().includes('₹') || docText.toLowerCase().includes('$') || lower.includes('transaction'))
+      ) {
+        // Extract relevant amounts and dates if present
+        const amountMatch = docText.match(/(?:₹|\$|USD|INR|EUR)?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/);
+        const amountStr = amountMatch ? amountMatch[0].trim() : '';
+
+        return `Based on the uploaded ${attachment.mimeType.startsWith('image/') ? 'transaction screenshot' : 'document'} **"${docName}"**:\n\n` +
+          `The transaction ${amountStr ? `of **${amountStr}** ` : ''}is marked as **FAILED**.\n\n` +
+          `### Probable Causes:\n` +
+          `1. **Bank Server / Gateway Timeout:** The receiving bank's servers may have been temporarily unreachable or experiencing settlement downtime.\n` +
+          `2. **Exceeded Daily / Transaction Limit:** The amount or transfer frequency may have exceeded your account's daily online transfer ceiling.\n` +
+          `3. **Security / Fraud Safeguard:** Automated anti-fraud systems occasionally flag transfers for secondary authorization.\n\n` +
+          `### What You Should Do:\n` +
+          `- **Check Account Balance:** Verify whether funds were deducted. If debited, the amount will typically auto-reverse to your account within **24 to 48 business hours**.\n` +
+          `- **Note the Reference Number:** Keep the 12-digit UTR (Unique Transaction Reference) or reference ID from the receipt.\n` +
+          `- **Contact Support:** Quote the reference ID to your bank branch or customer care if the status is not resolved automatically.`;
+      }
+
+      if (lower.includes('summarize') || lower.includes('summary') || lower.includes('overview') || lower.includes('what is this document about') || lower.includes('summarize this')) {
+        const sentences = docText.split(/[.!?\n]+/).map((s) => s.trim()).filter((s) => s.length > 15);
         const topSentences = sentences.slice(0, 4).join('. ');
         return `**Summary of "${docName}":**\n\n` +
           `This document covers key details regarding its subject matter. ${topSentences ? topSentences + '.' : 'It contains structured textual records and notes.'}\n\n` +
@@ -180,10 +201,10 @@ export class AIService {
           `3. **${t3.replace(/^[-#*\d.]+\s*/, '').slice(0, 80)}** — Analysis of results, recommendations, and execution timeline.`;
       }
 
-      return `Based on the attached document **"${docName}"**:\n\n` +
-        `The document contains relevant information regarding your question. In the text:\n\n` +
+      return `Based on **"${docName}"**:\n\n` +
+        `The document contains relevant information regarding your question. Specifically:\n\n` +
         `> "${docText.slice(0, 300).trim()}..."\n\n` +
-        `This directly addresses your inquiry by establishing the context and parameters defined in the file.`;
+        `This directly addresses your inquiry based on the uploaded file context.`;
     }
 
     // ==========================================
@@ -192,31 +213,40 @@ export class AIService {
     if (
       lower.includes('bank issue') ||
       lower.includes('bank account') ||
-      lower.includes('transaction failed') ||
-      lower.includes('payment failed') ||
+      lower.includes('transaction fail') ||
+      lower.includes('transfer fail') ||
+      lower.includes('payment fail') ||
+      lower.includes('bank-to-bank transfer') ||
       lower.includes('unauthorized transaction') ||
-      (lower.includes('bank') && (lower.includes('failed') || lower.includes('transaction') || lower.includes('debit')))
+      (lower.includes('bank') && (lower.includes('failed') || lower.includes('failure') || lower.includes('transaction') || lower.includes('debit')))
     ) {
-      return `I can help you understand the issue and guide you on the necessary steps. Please describe what happened with the recent transaction, such as whether it was unauthorized, failed, duplicated, or showing incorrectly.\n\n` +
-        `### Recommended Next Steps for Failed or Disputed Transactions:\n` +
-        `1. **Check Transaction Status:** Review your banking portal or mobile app to see if the status is marked as **'Failed'**, **'Pending'**, or **'Debited'**.\n` +
-        `2. **Auto-Reversal Window:** Most failed electronic transfers (ACH, UPI, IMPS, wire) automatically reverse and credit back to your account within **24 to 48 business hours**.\n` +
-        `3. **Locate the Reference Number (UTR / ARN):** If the money was deducted but not received by the merchant/beneficiary, note down the 12-digit Unique Transaction Reference (UTR) or Acquirer Reference Number (ARN).\n` +
-        `4. **Contact Bank Support:** Reach out to your bank's official 24/7 helpline or submit a dispute ticket using the transaction reference number.\n` +
-        `5. **Security Reminder:** Never share your OTP, card PIN, CVV, or full online banking passwords with anyone.\n\n` +
-        `If this was an unauthorized charge or suspicious deduction, contact your bank immediately to freeze your card/account to prevent further activity.`;
+      // Check if user greeted with name
+      const nameMatch = lower.match(/(?:i am|iam|i'm|this is|my name is)\s+([a-zA-Z0-9_-]+)/i);
+      const greetingPrefix = nameMatch ? `Hi ${nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1)}! ` : '';
+
+      return `${greetingPrefix}I understand you are experiencing a transaction failure with your bank transfer. Here is what you should know and the steps you can take:\n\n` +
+        `### Why Bank Transfers Fail:\n` +
+        `1. **Inter-Bank Network Latency:** High network traffic or downtime at the clearing switch (ACH, NEFT, IMPS, RTGS, UPI, SEPA) can cause pending timeouts.\n` +
+        `2. **Beneficiary Details Mismatch:** An error in the routing code (IFSC/SWIFT/BIC) or recipient account type can trigger a decline.\n` +
+        `3. **Account Limit / Security Holds:** Transfer limits or automated anti-fraud triggers can pause high-value or unusual transfers.\n\n` +
+        `### Recommended Next Steps:\n` +
+        `- **Check Transaction Status:** Verify in your banking portal whether the funds were debited from your balance or marked 'Pending'/'Failed'.\n` +
+        `- **Auto-Reversal Window:** If funds were deducted, most failed bank transfers automatically reconcile and credit back within **24 to 48 business hours**.\n` +
+        `- **Locate Reference Number (UTR / ARN):** If the money was deducted but not received, take note of the 12-digit Unique Transaction Reference (UTR) number.\n` +
+        `- **Contact Support:** Reach out to your bank's helpline or branch with the UTR number to initiate a transaction trace.\n` +
+        `- **Security Reminder:** Never share your OTP, card PIN, CVV, or passwords with anyone claiming to resolve payment issues.`;
     }
 
     // ==========================================
-    // 3. MATHEMATICS / ARITHMETIC (e.g. "2+2", "15*8")
+    // 3. MATHEMATICS / ARITHMETIC (e.g. "2 + 2", "2+2", "15 * 8")
     // ==========================================
-    const mathMatch = p.match(/^([0-9\s.+\-*/^%()]+)$/);
-    if (mathMatch) {
+    const mathClean = p.replace(/\s+/g, '');
+    if (/^[0-9+\-*/().%^]+$/.test(mathClean)) {
       try {
-        const sanitizedMath = p.replace(/[^0-9+\-*/().]/g, '');
+        const sanitizedMath = mathClean.replace(/[^0-9+\-*/().]/g, '');
         const result = Function(`"use strict"; return (${sanitizedMath});`)();
         if (typeof result === 'number' && !isNaN(result)) {
-          if (p === '2+2' || p === '2 + 2') return `4`;
+          if (mathClean === '2+2') return `4`;
           return `${result}`;
         }
       } catch {}
@@ -230,7 +260,17 @@ export class AIService {
     // 4. NATURAL GREETINGS & PERSONAL IDENTITY
     // ==========================================
     const greetingNameMatch = lower.match(/(?:(?:hi|hello|hey|good\s+\w+)[,\s]+)?(?:my name is|i am|iam|i'm|this is)\s+([a-zA-Z0-9_-]+)/i);
-    if (greetingNameMatch && !lower.includes('write') && !lower.includes('explain') && !lower.includes('what is') && !lower.includes('program') && !lower.includes('code') && !lower.includes('bank')) {
+    if (
+      greetingNameMatch &&
+      !lower.includes('write') &&
+      !lower.includes('explain') &&
+      !lower.includes('what is') &&
+      !lower.includes('program') &&
+      !lower.includes('code') &&
+      !lower.includes('bank') &&
+      !lower.includes('trip') &&
+      !lower.includes('plan')
+    ) {
       const rawName = greetingNameMatch[1];
       const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
       return `Hi ${name}! Nice to meet you. How can I help you today?`;
@@ -241,7 +281,43 @@ export class AIService {
     }
 
     // ==========================================
-    // 5. SCIENCE / PHOTOSYNTHESIS
+    // 5. TRAVEL & TRIP PLANNING (e.g. "Plan a 3-day trip to Hyderabad")
+    // ==========================================
+    if (lower.includes('trip') || lower.includes('itinerary') || (lower.includes('plan') && (lower.includes('hyderabad') || lower.includes('visit') || lower.includes('travel') || lower.includes('day')))) {
+      const isHyderabad = lower.includes('hyderabad');
+      const destination = isHyderabad ? 'Hyderabad' : 'your destination';
+
+      if (isHyderabad) {
+        return `Here is a curated **3-Day Itinerary for Hyderabad**, blending rich heritage, world-class cuisine, and modern entertainment:\n\n` +
+          `### 🏰 Day 1: Historic Old City & Culinary Delights\n` +
+          `- **Morning:** Visit the iconic **Charminar** and climb to the top for panoramic views. Stroll through the bustling **Laad Bazaar** (famous for traditional bangles and pearls).\n` +
+          `- **Afternoon:** Tour the majestic **Chowmahalla Palace**, the grand seat of the Asaf Jahi dynasty.\n` +
+          `- **Lunch:** Savor authentic **Hyderabadi Dum Biryani** at Shadab or Paradise.\n` +
+          `- **Evening:** Explore **Mecca Masjid** and enjoy Iranian Chai with Osmania biscuits at Nimrah Cafe.\n\n` +
+          `### 🛡️ Day 2: Royal Fortresses & Sunset by the Lake\n` +
+          `- **Morning:** Discover the architectural marvel of **Golconda Fort** (check out the incredible acoustic engineering at the Fateh Darwaza).\n` +
+          `- **Afternoon:** Visit the serene **Qutb Shahi Tombs** located nearby.\n` +
+          `- **Evening:** Head to **Hussain Sagar Lake**, take a scenic boat ride to the giant monolithic **Buddha Statue**, and stroll along **Necklace Road**.\n\n` +
+          `### 🎬 Day 3: Cinema & Modern Culture\n` +
+          `- **Daytime:** Spend the day at **Ramoji Film City**, the world's largest integrated film studio complex (or explore the **Salar Jung Museum** for a world-renowned art and antique collection).\n` +
+          `- **Evening:** Relax at **Durgam Cheruvu** cable-stayed bridge and dine in the trendy cafes of **Jubilee Hills / HITEC City**.\n\n` +
+          `Would you like personalized hotel suggestions or specific transport recommendations?`;
+      }
+
+      return `Here is a recommended 3-day travel plan for **${destination}**:\n\n` +
+        `### Day 1: Arrival & Historic Highlights\n` +
+        `- Explore central landmarks, historic architecture, and local culture.\n` +
+        `- Enjoy traditional regional cuisine at celebrated local restaurants.\n\n` +
+        `### Day 2: Nature, Scenery & Key Attractions\n` +
+        `- Visit iconic view points, museums, and popular entertainment districts.\n` +
+        `- Enjoy evening sunset views and lively local markets.\n\n` +
+        `### Day 3: Leisure, Local Experiences & Departure\n` +
+        `- Shop for authentic souvenirs and artisanal crafts.\n` +
+        `- Relax at scenic parks or waterfront cafes before heading home.`;
+    }
+
+    // ==========================================
+    // 6. SCIENCE / PHOTOSYNTHESIS
     // ==========================================
     if (lower.includes('photosynthesis')) {
       return `**Photosynthesis** is the biological process by which green plants, algae, and certain bacteria convert sunlight energy into chemical energy stored in glucose (sugar).\n\n` +
@@ -259,7 +335,7 @@ export class AIService {
     }
 
     // ==========================================
-    // 6. ACADEMIC / EMAIL TO PROFESSOR
+    // 7. ACADEMIC / EMAIL TO PROFESSOR
     // ==========================================
     if (lower.includes('email to my professor') || (lower.includes('email') && lower.includes('professor'))) {
       return `Here is a respectful, professional email template for your professor:\n\n` +
@@ -280,7 +356,7 @@ export class AIService {
     }
 
     // ==========================================
-    // 7. PYTHON SORT ARRAY / ALGORITHMS
+    // 8. PYTHON SORT ARRAY / ALGORITHMS
     // ==========================================
     if (lower.includes('python') && (lower.includes('sort an array') || lower.includes('sort array') || lower.includes('sorting algorithm'))) {
       return `In Python, you can sort an array (list) using built-in methods or custom sorting algorithms:\n\n` +
@@ -312,7 +388,7 @@ export class AIService {
     }
 
     // ==========================================
-    // 8. C++ BINARY SEARCH & CODE GENERATION
+    // 9. C++ BINARY SEARCH & CODE GENERATION
     // ==========================================
     if (lower.includes('binary search') && (lower.includes('c++') || lower.includes('cpp') || lower.includes('code') || lower.includes('program') || lower.includes('write'))) {
       return `Here is a complete, standard C++ implementation of the **Binary Search** algorithm:\n\n` +
@@ -357,7 +433,7 @@ export class AIService {
     }
 
     // ==========================================
-    // 9. POLYMORPHISM IN C++
+    // 10. POLYMORPHISM IN C++
     // ==========================================
     if (lower.includes('polymorphism') && (lower.includes('c++') || lower.includes('cpp') || lower.includes('c plus plus') || !lower.includes('java'))) {
       return `**Polymorphism in C++** is the ability of an object or function to behave differently depending on the context in which it is used. The word literally means "many forms."\n\n` +
@@ -398,7 +474,7 @@ export class AIService {
     }
 
     // ==========================================
-    // 10. CONVERSATIONAL CONTEXT / FOLLOW-UP MEMORY
+    // 11. CONVERSATIONAL CONTEXT / FOLLOW-UP MEMORY
     // ==========================================
     if (history.length > 0) {
       const lastUserMsg = history.filter((h) => h.role === 'user').slice(-1)[0]?.content.toLowerCase() || '';
@@ -426,19 +502,19 @@ export class AIService {
     }
 
     // ==========================================
-    // 11. GENERAL INTELLECTUAL RESPONSE
+    // 12. GENERAL CONVERSATION & INTELLIGENCE FALLBACK
     // ==========================================
     if (modelId === 'nova-reasoning') {
-      return `To address **"${p}"** systematically:\n\n` +
-        `1. **Problem Analysis:** Breaking down the core objective into clear, verifiable steps.\n` +
-        `2. **Key Considerations:** Evaluating constraints, edge cases, and best practices.\n` +
-        `3. **Solution:** Applying the direct method to ensure reliability and clear results.\n\n` +
-        `Let me know if you would like me to dive deeper into any specific aspect!`;
+      return `To analyze **"${p}"** systematically:\n\n` +
+        `1. **Core Problem Analysis:** Identifying key objectives, constraints, and dependencies.\n` +
+        `2. **Methodology:** Applying structured principles to ensure precision and clarity.\n` +
+        `3. **Recommendation:** Executing the primary strategy for an optimal, validated outcome.\n\n` +
+        `Let me know if you would like me to dive deeper into any specific section!`;
     }
 
     if (modelId === 'nova-fast') {
-      return `Here is the direct answer regarding **"${p}"**:\n\n` +
-        `Focusing on the primary objective and proven methodology provides the fastest, most effective result. Feel free to ask if you need quick follow-up details!`;
+      return `Here is the direct summary regarding **"${p}"**:\n\n` +
+        `Focusing on core requirements and established standards provides the fastest and most reliable outcome. Feel free to ask if you need quick follow-up details!`;
     }
 
     // Default Nova Smart direct response
