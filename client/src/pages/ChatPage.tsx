@@ -144,11 +144,14 @@ export const ChatPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Chat error:', err);
+      const displayContent = err?.message && !err.message.includes('object Object')
+        ? err.message
+        : 'I encountered a temporary error while processing your message. Please try again.';
       const errorMsg: ChatMessage = {
         id: `err-${Date.now()}`,
         conversation_id: currentConversation?.id || '',
         role: 'assistant',
-        content: 'I encountered a temporary error while processing your message. Please try again.',
+        content: displayContent,
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMsg]);

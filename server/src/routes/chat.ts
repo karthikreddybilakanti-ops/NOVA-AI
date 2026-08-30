@@ -4,6 +4,7 @@ import { globalPipeline } from '../privacy/pipeline.js';
 import { globalConversationStore } from '../chat/conversationStore.js';
 import { globalAuthStore } from '../auth/authStore.js';
 import { FileProcessor } from '../chat/fileProcessor.js';
+import { uploadToSupabaseStorage } from '../supabase.js';
 import { NovaModelId } from '../types.js';
 
 const upload = multer({
@@ -28,15 +29,20 @@ chatRouter.post(
   async (req: Request, res: Response): Promise<void> => {
     try {
       if (!req.file) {
-        res.status(400).json({ error: 'No file uploaded' });
+        res.status(400).json({ error: 'No file provided in upload request.' });
         return;
       }
 
-      const originalName = req.file.originalname;
-      const mimeType = req.file.mimetype;
+      const originalName = req.file.originalname || 'attachment.txt';
+      const mimeType = req.file.mimetype || 'application/octet-stream';
       const buffer = req.file.buffer;
 
+      // Extract text content and metadata
       const processed = await FileProcessor.processFile(buffer, originalName, mimeType);
+
+      // If Supabase Storage is configured, upload to storage bucket
+      const bucketName = process.env.SUPABASE_STORAGE_BUCKET || 'nova-attachments';
+      const storageUpload = await uploadToSupabaseStorage(bucketName, originalName, buffer, mimeType);
 
       res.json({
         success: true,
@@ -46,11 +52,12 @@ chatRouter.post(
           sizeBytes: processed.sizeBytes,
           summary: processed.summary,
           extractedText: processed.extractedText,
+          storageUrl: storageUpload.url || undefined,
         },
       });
     } catch (err: any) {
-      console.error('File upload error:', err);
-      res.status(500).json({ error: err.message || 'Failed to process file' });
+      console.error('[File Upload Error]:', err.message || err);
+      res.status(500).json({ error: err.message || 'Failed to process and extract file content.' });
     }
   }
 );
@@ -87,7 +94,7 @@ chatRouter.get('/conversations/:id', (req: Request, res: Response): void => {
   const { id } = req.params;
   const conversation = globalConversationStore.getConversation(id);
   if (!conversation) {
-    res.status(404).json({ error: 'Conversation not found' });
+    res.status(404).json({ error: 'Conversation not found.' });
     return;
   }
   const messages = globalConversationStore.getMessages(id);
@@ -107,7 +114,7 @@ chatRouter.post('/message', async (req: Request, res: Response): Promise<void> =
     const { prompt, modelId, conversationId, attachment } = req.body;
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-      res.status(400).json({ error: 'Prompt is required' });
+      res.status(400).json({ error: 'Prompt is required and cannot be empty.' });
       return;
     }
 
@@ -172,7 +179,7 @@ chatRouter.post('/message', async (req: Request, res: Response): Promise<void> =
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
-    console.error('Chat error:', err);
+    console.error('[Chat Service Error]:', err.message || err);
     res.status(500).json({ error: err.message || 'Internal server error processing chat request.' });
   }
 });
