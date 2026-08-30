@@ -18,8 +18,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   const selectedModel = models.find((m) => m.id === selectedModelId) || models[0] || {
     id: 'nova-smart',
-    name: 'NOVA AI Assistant',
-    tagline: 'General-purpose privacy-first AI',
+    name: 'NOVA AI',
+    tagline: 'Privacy-first general-purpose assistant',
     badge: 'Active',
   };
 

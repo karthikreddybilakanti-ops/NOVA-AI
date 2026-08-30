@@ -324,7 +324,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
             {/* Active Model Indicator Tag */}
             <span className="hidden sm:inline-block text-[11px] font-medium text-slate-400 ml-1">
-              Using <span className="text-violet-600 font-semibold">AI Assistant</span>
+              Using <span className="text-violet-600 font-semibold">NOVA AI</span>
             </span>
           </div>
 
