@@ -30,13 +30,13 @@ export function createApp(): Express {
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
-  // Healthcheck
+  // Healthcheck Endpoints
   app.get('/health', (_req: Request, res: Response) => {
-    res.json({ status: 'ok', product: 'NOVA AI', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok' });
   });
 
   app.get('/api/health', (_req: Request, res: Response) => {
-    res.json({ status: 'ok', product: 'NOVA AI', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok' });
   });
 
   // Mount API Routers
