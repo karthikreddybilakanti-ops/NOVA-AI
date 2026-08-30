@@ -239,11 +239,9 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onReg
               )}
             </div>
 
-            {message.model_id && (
-              <span className="text-[11px] text-slate-400 font-medium capitalize">
-                {message.model_id.replace('-', ' ')}
-              </span>
-            )}
+            <span className="text-[11px] text-slate-400 font-medium">
+              NOVA AI
+            </span>
           </div>
         </div>
       </div>
