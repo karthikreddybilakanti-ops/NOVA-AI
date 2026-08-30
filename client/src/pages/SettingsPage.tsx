@@ -93,9 +93,7 @@ export const SettingsPage: React.FC = () => {
                   onChange={(e) => setDefaultModel(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-violet-500"
                 >
-                  <option value="nova-smart">Nova Smart (Recommended for everyday questions)</option>
-                  <option value="nova-reasoning">Nova Reasoning (For deep analysis & math/code)</option>
-                  <option value="nova-fast">Nova Fast (Instant, concise answers)</option>
+                  <option value="nova-smart">NOVA AI Assistant (Standard)</option>
                 </select>
               </div>
 

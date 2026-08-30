@@ -16,12 +16,14 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
+    "@types/pdf-parse": "^1.1.5",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "mammoth": "^1.12.2",
     "multer": "^2.2.0",
+    "pdf-parse": "^2.4.5",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {

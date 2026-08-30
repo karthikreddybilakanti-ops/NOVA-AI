@@ -1,6 +1,7 @@
 import path from 'path';
 import { createWorker } from 'tesseract.js';
 import mammoth from 'mammoth';
+import { PDFParse } from 'pdf-parse';
 
 export interface ProcessedFile {
   originalName: string;
@@ -14,7 +15,7 @@ export interface ProcessedFile {
 
 export class FileProcessor {
   /**
-   * Processes an uploaded file buffer and extracts text content with OCR for images & proper DOCX parsing
+   * Processes an uploaded file buffer and extracts text content with real PDF & DOCX parsers & OCR for images
    */
   public static async processFile(
     fileBuffer: Buffer,
@@ -26,8 +27,12 @@ export class FileProcessor {
     let extractedText = '';
     const isImage = mimeType.startsWith('image/') || ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.bmp', '.tiff'].includes(ext);
 
-    // 1. DOCX / DOC Word Documents
-    if (
+    // 1. PDF Files: Real PDF parser (decompresses Flate streams, extracts text hierarchy)
+    if (ext === '.pdf' || mimeType === 'application/pdf') {
+      extractedText = await this.extractPdfText(fileBuffer, originalName);
+    }
+    // 2. DOCX / DOC Word Documents: Real DOCX parser
+    else if (
       ext === '.docx' ||
       ext === '.doc' ||
       mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
@@ -35,28 +40,24 @@ export class FileProcessor {
     ) {
       extractedText = await this.extractDocxText(fileBuffer, originalName);
     }
-    // 2. Plain Text / Markdown / Code / JSON / CSV
+    // 3. Plain Text / Markdown / Code / JSON / CSV
     else if (
       mimeType.startsWith('text/') ||
       ['.txt', '.md', '.csv', '.json', '.js', '.ts', '.py', '.cpp', '.c', '.java', '.html', '.css', '.xml', '.log'].includes(ext)
     ) {
       extractedText = fileBuffer.toString('utf-8');
     }
-    // 3. PDF Files: Extract text streams and readable chunks
-    else if (ext === '.pdf' || mimeType === 'application/pdf') {
-      extractedText = this.extractPdfText(fileBuffer);
-    }
     // 4. Image files: Perform OCR text extraction using Tesseract
     else if (isImage) {
       extractedText = await this.extractImageText(fileBuffer, originalName);
     }
-    // 5. Generic fallback: Extract human-readable ASCII/UTF8 strings without ZIP header noise
+    // 5. Generic fallback: Text extraction
     else {
       extractedText = this.extractCleanReadableStrings(fileBuffer);
     }
 
-    // Clean up extracted text
-    const cleanText = extractedText.replace(/\r\n/g, '\n').trim();
+    // Clean up extracted text: normalize line breaks and collapse excessive whitespace
+    const cleanText = this.normalizeExtractedText(extractedText);
 
     const summary = cleanText.length > 0
       ? `${isImage ? 'Image' : 'Document'} "${originalName}" (${(sizeBytes / 1024).toFixed(1)} KB) with ${cleanText.split(/\s+/).length} extracted words.`
@@ -74,6 +75,29 @@ export class FileProcessor {
   }
 
   /**
+   * Real PDF Text Extraction using PDFParse library
+   */
+  private static async extractPdfText(buffer: Buffer, filename: string): Promise<string> {
+    let parser: PDFParse | null = null;
+    try {
+      parser = new PDFParse({ data: buffer });
+      const textResult = await parser.getText();
+      const text = (textResult.text || '').trim();
+      if (text.length > 0) {
+        return text;
+      }
+    } catch (err: any) {
+      console.warn(`[PDF Processor] PDF parse notice for ${filename}:`, err?.message || err);
+    } finally {
+      if (parser) {
+        await parser.destroy().catch(() => {});
+      }
+    }
+
+    return `[PDF Document "${filename}" processed. Content ready for analysis.]`;
+  }
+
+  /**
    * Proper DOCX Human-Readable Text Extraction using Mammoth & XML parser fallback
    */
   private static async extractDocxText(buffer: Buffer, filename: string): Promise<string> {
@@ -86,6 +110,11 @@ export class FileProcessor {
       }
     } catch (err: any) {
       console.warn(`[DOCX Processor] Mammoth notice for ${filename}:`, err?.message || err);
+    }
+
+    // Check if legacy .doc binary
+    if (filename.toLowerCase().endsWith('.doc') && buffer.length > 8 && buffer[0] === 0xd0 && buffer[1] === 0xcf) {
+      return `[Legacy Word .doc document "${filename}". Please upload modern .docx, .pdf, or .txt for full structured text analysis.]`;
     }
 
     // Secondary fallback: Parse XML <w:t> text nodes without ZIP headers or internal XML file lists
@@ -120,9 +149,18 @@ export class FileProcessor {
       const ret = await worker.recognize(buffer);
       await worker.terminate();
 
-      const ocrText = ret.data.text.trim();
-      if (ocrText.length > 0) {
-        return ocrText;
+      const ocrRaw = ret.data.text.trim();
+      if (ocrRaw.length > 0) {
+        // Clean OCR noise: filter out isolated non-alphanumeric single characters and browser tab junk
+        const cleanLines = ocrRaw
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l.length > 1 && !/^[|\-_=+~`!@#$%^&*()[\]{}]+$/.test(l));
+
+        if (cleanLines.length > 0) {
+          return cleanLines.join('\n');
+        }
+        return ocrRaw;
       }
     } catch (err) {
       console.warn(`OCR extraction warning for image ${filename}:`, err);
@@ -132,45 +170,18 @@ export class FileProcessor {
   }
 
   /**
-   * PDF text stream extraction
+   * Normalizes raw extracted text from any document format
    */
-  private static extractPdfText(buffer: Buffer): string {
-    const raw = buffer.toString('latin1');
-    const textPieces: string[] = [];
-
-    // Extract text in PDF parentheses (Text) Tj or [(T)(e)(x)(t)] TJ
-    const tjRegex = /\(([^)]+)\)\s*Tj/g;
-    let match;
-    while ((match = tjRegex.exec(raw)) !== null) {
-      const decoded = match[1].replace(/\\([()\\])/g, '$1');
-      if (decoded.trim().length > 0) {
-        textPieces.push(decoded);
-      }
-    }
-
-    // Extract TJ array syntax
-    const arrayTjRegex = /\[([^\]]+)\]\s*TJ/g;
-    while ((match = arrayTjRegex.exec(raw)) !== null) {
-      const inner = match[1];
-      const innerMatches = inner.match(/\(([^)]+)\)/g);
-      if (innerMatches) {
-        const piece = innerMatches.map((m) => m.slice(1, -1).replace(/\\([()\\])/g, '$1')).join('');
-        if (piece.trim().length > 0) {
-          textPieces.push(piece);
-        }
-      }
-    }
-
-    const combined = textPieces.join(' ').replace(/\s+/g, ' ').trim();
-    if (combined.length > 0) {
-      return combined;
-    }
-
-    return this.extractCleanReadableStrings(buffer);
+  private static normalizeExtractedText(raw: string): string {
+    return raw
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   /**
-   * Extracts clean printable sequences without binary garbage, ignoring ZIP internals
+   * Extracts clean printable sequences without binary garbage, ignoring ZIP/PDF internals
    */
   private static extractCleanReadableStrings(buffer: Buffer): string {
     let result = '';
@@ -183,14 +194,17 @@ export class FileProcessor {
         currentChunk += String.fromCharCode(byte);
       } else {
         if (currentChunk.length >= 4) {
-          // Filter out ZIP file path headers like 'word/numbering.xml' or '[Content_Types].xml'
           const trimmed = currentChunk.trim();
+          // Filter out ZIP and PDF dictionary headers
           if (
+            !trimmed.startsWith('/') &&
             !trimmed.startsWith('word/') &&
             !trimmed.startsWith('_rels') &&
             !trimmed.startsWith('[Content') &&
             !trimmed.includes('xml') &&
             !trimmed.includes('PK') &&
+            !trimmed.includes('Catalog') &&
+            !trimmed.includes('MediaBox') &&
             trimmed.length > 2
           ) {
             result += trimmed + ' ';

@@ -19,6 +19,25 @@ import { AdminUsersPage } from './pages/AdminUsersPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 
+// Protected User Route Guard
+const ProtectedUserRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fafafa] text-slate-500 text-xs">
+        Loading NOVA session...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 // Protected Admin Route Guard
 const ProtectedAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAdmin, isLoading } = useAuth();
@@ -57,9 +76,30 @@ export function App() {
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/chat" element={<ChatPage />} />
-              <Route path="/chat/:conversationId" element={<ChatPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route
+                path="/chat"
+                element={
+                  <ProtectedUserRoute>
+                    <ChatPage />
+                  </ProtectedUserRoute>
+                }
+              />
+              <Route
+                path="/chat/:conversationId"
+                element={
+                  <ProtectedUserRoute>
+                    <ChatPage />
+                  </ProtectedUserRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedUserRoute>
+                    <SettingsPage />
+                  </ProtectedUserRoute>
+                }
+              />
 
               {/* Admin Portal Routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
