@@ -15,29 +15,17 @@ export class ConversationStore {
   ];
 
   public getModels(): NovaModelConfig[] {
+    const isGroq = !!process.env.GROQ_API_KEY;
     const isGemini = !!process.env.GEMINI_API_KEY;
     const isOpenAI = !!process.env.OPENAI_API_KEY;
 
-    if (isGemini) {
+    if (isGroq || isGemini || isOpenAI) {
       return [
         {
           id: 'nova-smart',
           name: 'NOVA AI',
           tagline: 'Privacy-first general-purpose assistant',
-          description: 'Direct integration with Google Gemini 3.6 Flash via the Interactions API.',
-          badge: 'Active',
-          enabled: true,
-        },
-      ];
-    }
-
-    if (isOpenAI) {
-      return [
-        {
-          id: 'nova-smart',
-          name: 'OpenAI GPT-4o',
-          tagline: 'High-intelligence multimodal model',
-          description: 'Direct integration with OpenAI GPT-4o for complex reasoning and multimodal analysis.',
+          description: 'High-performance AI model powered by Groq Llama 3.3.',
           badge: 'Active',
           enabled: true,
         },
@@ -47,9 +35,9 @@ export class ConversationStore {
     return [
       {
         id: 'nova-smart',
-        name: 'AI Assistant',
+        name: 'NOVA AI',
         tagline: 'Configured AI Model',
-        description: 'Direct AI provider gateway (requires GEMINI_API_KEY or OPENAI_API_KEY).',
+        description: 'Direct AI provider gateway (requires GROQ_API_KEY).',
         badge: 'Offline',
         enabled: true,
       },
