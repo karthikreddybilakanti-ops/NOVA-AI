@@ -23,7 +23,7 @@ interface ChatComposerProps {
 export const ChatComposer: React.FC<ChatComposerProps> = ({
   onSend,
   isLoading,
-  modelId,
+  modelId: _modelId,
 }) => {
   const [prompt, setPrompt] = useState('');
   const [attachment, setAttachment] = useState<UploadedAttachment | null>(null);
@@ -65,10 +65,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   };
 
   const handleSubmit = () => {
-    if ((!prompt.trim() && !attachment) || isLoading || isUploading || isSubmittingRef.current) return;
+    if (!prompt.trim() || isLoading || isUploading || isSubmittingRef.current) return;
     
     isSubmittingRef.current = true;
-    const textToSend = prompt.trim() || (attachment ? 'Please summarize and analyze this attachment.' : '');
+    const textToSend = prompt.trim();
     const attachToSend = attachment;
 
     setPrompt('');
@@ -317,7 +317,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
             {/* Active Model Indicator Tag */}
             <span className="hidden sm:inline-block text-[11px] font-medium text-slate-400 ml-1">
-              Using <span className="text-violet-600 font-semibold capitalize">{modelId.replace('-', ' ')}</span>
+              Using <span className="text-violet-600 font-semibold">AI Assistant</span>
             </span>
           </div>
 
@@ -326,9 +326,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={(!prompt.trim() && !attachment) || isLoading || isUploading}
+              disabled={!prompt.trim() || isLoading || isUploading}
               className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-all ${
-                (prompt.trim() || attachment) && !isLoading && !isUploading
+                prompt.trim() && !isLoading && !isUploading
                   ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30 hover:bg-violet-700 active:scale-95'
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed'
               }`}

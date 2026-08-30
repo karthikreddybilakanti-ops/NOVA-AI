@@ -98,9 +98,9 @@ export const ChatPage: React.FC = () => {
   };
 
   const handleSendMessage = async (promptText: string, attachment?: UploadedAttachment | null) => {
-    if ((!promptText.trim() && !attachment) || isLoading) return;
+    if (!promptText.trim() || isLoading) return;
 
-    const displayPrompt = promptText.trim() || (attachment ? 'Please summarize and analyze this attachment.' : '');
+    const displayPrompt = promptText.trim();
 
     // Temporary local message representation
     const tempUserMsg: ChatMessage = {

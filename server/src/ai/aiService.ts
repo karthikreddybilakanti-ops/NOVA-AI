@@ -180,15 +180,13 @@ export class AIService {
   }
 
   private getModelDisplayName(modelId: NovaModelId): string {
-    switch (modelId) {
-      case 'nova-reasoning':
-        return 'Nova Reasoning';
-      case 'nova-fast':
-        return 'Nova Fast';
-      case 'nova-smart':
-      default:
-        return 'Nova Smart';
+    if (process.env.GEMINI_API_KEY) {
+      return 'Gemini 1.5 Flash';
     }
+    if (process.env.OPENAI_API_KEY) {
+      return 'OpenAI GPT-4o';
+    }
+    return 'AI Assistant';
   }
 
   /**
