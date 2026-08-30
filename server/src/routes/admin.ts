@@ -1,21 +1,21 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { globalTraceStore } from '../trace/traceStore.js';
-import { globalAuthStore } from '../auth/authStore.js';
+import { globalAuthService } from '../auth/authService.js';
 import { globalConversationStore } from '../chat/conversationStore.js';
 import { globalFeedbackStore } from '../feedback/feedbackStore.js';
 import { NovaModelId } from '../types.js';
 
 export const adminRouter = Router();
 
-// Middleware to verify admin authorization
-const requireAdmin = (req: Request, res: Response, next: () => void): void => {
+// Middleware to verify admin authorization using persistent Supabase auth token
+const requireAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Unauthorized. Administrator credentials required.' });
     return;
   }
   const token = authHeader.split(' ')[1];
-  const user = globalAuthStore.getUserByToken(token);
+  const user = await globalAuthService.getUserByToken(token);
 
   if (!user || user.role !== 'admin') {
     res.status(403).json({ error: 'Access forbidden. Administrator privileges required.' });
@@ -57,7 +57,7 @@ adminRouter.delete('/traces', (_req: Request, res: Response) => {
 });
 
 // 5. Real-Time Server-Sent Events (SSE) Stream for Verification Console
-adminRouter.get('/stream', (req: Request, res: Response) => {
+adminRouter.get('/stream', (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -81,8 +81,8 @@ adminRouter.post('/models/:id/toggle', (req: Request, res: Response): void => {
 });
 
 // 7. Get All Users (Admin User Management)
-adminRouter.get('/users', (_req: Request, res: Response) => {
-  const users = globalAuthStore.getUsers();
+adminRouter.get('/users', async (_req: Request, res: Response) => {
+  const users = await globalAuthService.getUsers();
   res.json({ users });
 });
 

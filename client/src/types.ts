@@ -29,11 +29,21 @@ export interface Conversation {
   updated_at: string;
 }
 
+export interface UploadedAttachment {
+  id?: string;
+  originalName: string;
+  mimeType: string;
+  size?: number;
+  url?: string;
+  extractedText?: string;
+}
+
 export interface ChatMessage {
   id: string;
   conversation_id: string;
   role: 'user' | 'assistant';
   content: string;
+  attachment?: UploadedAttachment;
   model_id?: NovaModelId;
   trace_id?: string;
   created_at: string;

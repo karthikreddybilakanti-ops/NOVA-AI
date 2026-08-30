@@ -101,6 +101,14 @@ export interface MessageRecord {
   conversation_id: string;
   role: 'user' | 'assistant';
   content: string;
+  attachment?: {
+    id?: string;
+    originalName: string;
+    mimeType: string;
+    size?: number;
+    url?: string;
+    extractedText?: string;
+  };
   model_id?: NovaModelId;
   trace_id?: string;
   created_at: string;

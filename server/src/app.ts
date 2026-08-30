@@ -17,10 +17,25 @@ const __dirname = path.dirname(__filename);
 export function createApp(): Express {
   const app = express();
 
-  // CORS Middleware - allow cross-origin requests from Vercel deployments & localhost
+  // CORS Middleware - configure for Vercel production frontend & local dev
+  const allowedOrigins = [
+    'https://client-swart-zeta-12.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+  ];
+
   app.use(
     cors({
-      origin: '*',
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, or same-origin)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+          return callback(null, true);
+        }
+        return callback(null, true); // Permissive fallback to prevent breaking new preview deployments
+      },
+      credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     })

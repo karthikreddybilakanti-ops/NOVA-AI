@@ -65,6 +65,13 @@ export async function getProfileApi(): Promise<{ user: User }> {
   return res.json();
 }
 
+export async function logoutApi(): Promise<void> {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: 'POST',
+    headers: { ...getAuthHeader() },
+  }).catch(() => {});
+}
+
 // 1. Fetch AI Models
 export async function fetchModels(): Promise<NovaModelConfig[]> {
   const res = await fetch(`${API_BASE}/chat/models`, {
@@ -165,6 +172,7 @@ export async function sendChatMessageApi(
   messageId: string;
   conversationId: string;
   answer: string;
+  sanitizedPrompt?: string;
   modelId: NovaModelId;
   model: string;
   latency_ms: number;

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
-import { getProfileApi, loginApi, signupApi, adminLoginApi } from '../services/api';
+import { getProfileApi, loginApi, signupApi, adminLoginApi, logoutApi } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -66,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    logoutApi().catch(() => {});
     setUser(null);
     setToken(null);
     localStorage.removeItem('nova_auth_token');

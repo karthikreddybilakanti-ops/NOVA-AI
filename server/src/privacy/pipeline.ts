@@ -10,6 +10,7 @@ export interface PrivacyPipelineResult {
   messageId: string;
   conversationId: string;
   answer: string;
+  sanitizedPrompt: string;
   modelId: NovaModelId;
   model: string;
   latency_ms: number;
@@ -158,6 +159,9 @@ export class PrivacyPipeline {
       },
     ];
 
+    // Construct privacy-safe view of original prompt with all sensitive entities redacted
+    const privacySafePromptView = this.createPrivacySafePromptView(rawPrompt, allDetections);
+
     // STAGE 5: Record Real-Time Telemetry to Global Trace Store (For Admin Verification)
     const traceRecord: TraceRecord = {
       trace_id: traceId,
@@ -165,7 +169,7 @@ export class PrivacyPipeline {
       user_id: userId,
       conversation_id: conversationId,
       model_id: modelId,
-      raw_prompt: rawPrompt,
+      raw_prompt: privacySafePromptView,
       intent: taskIntent.summary,
       intent_summary: taskIntent.problemType,
       detections: maskedDetections,
@@ -196,12 +200,38 @@ export class PrivacyPipeline {
       messageId,
       conversationId,
       answer: aiResult.response,
+      sanitizedPrompt,
       modelId,
       model: aiResult.model,
       latency_ms: totalLatency,
       trace_id: traceId,
       status,
     };
+  }
+
+  /**
+   * Helper to produce a privacy-safe redacted view of the original user prompt for admin audit
+   */
+  private createPrivacySafePromptView(rawPrompt: string, detections: DetectedEntity[]): string {
+    if (!detections || detections.length === 0) return rawPrompt;
+
+    let result = '';
+    let lastIndex = 0;
+    const sorted = [...detections].sort((a, b) => a.startIndex - b.startIndex);
+
+    for (const d of sorted) {
+      if (d.startIndex > lastIndex) {
+        result += rawPrompt.substring(lastIndex, d.startIndex);
+      }
+      result += `[REDACTED: ${d.category.toUpperCase()}]`;
+      lastIndex = d.endIndex;
+    }
+
+    if (lastIndex < rawPrompt.length) {
+      result += rawPrompt.substring(lastIndex);
+    }
+
+    return result;
   }
 
   /**

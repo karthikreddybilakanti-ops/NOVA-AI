@@ -1,18 +1,18 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { globalFeedbackStore } from '../feedback/feedbackStore.js';
-import { globalAuthStore } from '../auth/authStore.js';
+import { globalAuthService } from '../auth/authService.js';
 
 export const feedbackRouter = Router();
 
 // Middleware to verify admin permissions
-const requireAdmin = (req: Request, res: Response, next: () => void): void => {
+const requireAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Unauthorized. Admin authorization required.' });
     return;
   }
   const token = authHeader.split(' ')[1];
-  const user = globalAuthStore.getUserByToken(token);
+  const user = await globalAuthService.getUserByToken(token);
 
   if (!user || user.role !== 'admin') {
     res.status(403).json({ error: 'Access forbidden. Administrator privileges required.' });

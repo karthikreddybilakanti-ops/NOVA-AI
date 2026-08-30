@@ -22,53 +22,53 @@ export const HowItWorksPage: React.FC = () => {
       icon: Search,
       badge: 'Input Phase',
       color: 'text-blue-600 bg-blue-50 border-blue-200',
-      description: 'You enter any natural-language question or instruction freely into NOVA AI without manual masking or scrubbing.',
-      example: 'User query: "My email is karthik@example.com. Explain polymorphism in C++."',
+      description: 'You enter any question, instruction, code snippet, image, or document freely into NOVA AI.',
+      example: 'User Input: Any question, instruction, image, or document provided by the user.',
     },
     {
       step: 2,
-      title: 'Privacy Detects',
+      title: 'NOVA Understands',
       icon: EyeOff,
-      badge: 'Detection Phase',
+      badge: 'Intent & Detection Phase',
       color: 'text-amber-600 bg-amber-50 border-amber-200',
-      description: 'Deterministic and pattern-based scanners identify potential sensitive data (emails, passwords, API keys, phone numbers, payment details).',
-      example: 'Detected: [Email: karthik@example.com • Confidence: 99%]',
+      description: 'The privacy gateway analyzes the intent of your request and detects potential sensitive information (such as credentials, financial identifiers, or personal details).',
+      example: 'Analysis: Identifies user task goal & scans for sensitive data entities.',
     },
     {
       step: 3,
-      title: 'Privacy Decides',
+      title: 'Necessity Check',
       icon: Filter,
       badge: 'Necessity Engine',
       color: 'text-violet-600 bg-violet-50 border-violet-200',
-      description: 'The Necessity Engine evaluates task relevance: is this specific sensitive entity essential to answer the user query?',
-      example: 'Decision: Email is UNNECESSARY for C++ polymorphism explanation.',
+      description: 'The Necessity Engine evaluates whether each detected entity is truly necessary to fulfill your request, preserving only what is required.',
+      example: 'Evaluation: Determines which details are essential vs. unnecessary for the task.',
     },
     {
       step: 4,
-      title: 'Minimization & Removal',
+      title: 'Minimization',
       icon: Minimize2,
-      badge: 'Sanitization Phase',
+      badge: 'Minimization Phase',
       color: 'text-purple-600 bg-purple-50 border-purple-200',
-      description: 'Unnecessary sensitive tokens are cleanly eliminated, preserving natural syntax and essential task context.',
-      example: 'Sanitized Prompt: "Explain polymorphism in C++."',
+      description: 'Unnecessary sensitive tokens are removed or redacted, producing a clean, privacy-safe representation of your original task.',
+      example: 'Minimization: Unnecessary private data is removed; semantic intent is preserved.',
     },
     {
       step: 5,
-      title: 'AI Model Receives Request',
+      title: 'AI Model Processing',
       icon: Bot,
-      badge: 'Execution Phase',
+      badge: 'Inference Phase',
       color: 'text-indigo-600 bg-indigo-50 border-indigo-200',
-      description: 'The selected model (Nova Smart, Nova Reasoning, or Nova Fast) receives ONLY the minimized request. Zero sensitive data reaches the AI.',
-      example: 'Model processes: "Explain polymorphism in C++."',
+      description: 'The AI model receives only the privacy-safe context necessary to answer your request. Unnecessary private data never reaches the downstream model.',
+      example: 'Inference: AI model receives sanitized context with zero unnecessary exposure.',
     },
     {
       step: 6,
-      title: 'AI Delivers Answer',
+      title: 'Natural AI Answer',
       icon: ShieldCheck,
       badge: 'Delivery Phase',
       color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
-      description: 'You receive a direct, intelligent response. The entire privacy pipeline completes in milliseconds behind the scenes.',
-      example: 'Output: Full, accurate explanation of C++ polymorphism.',
+      description: 'You receive a natural, accurate response tailored to your question. The entire privacy pipeline completes in milliseconds.',
+      example: 'Result: High-quality AI response delivered directly to you.',
     },
   ];
 
@@ -79,13 +79,13 @@ export const HowItWorksPage: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-xs font-semibold text-violet-700 mb-4">
             <Cpu className="w-3.5 h-3.5 text-violet-600" />
-            <span>Behind-the-Scenes Architecture</span>
+            <span>Architecture & Privacy Pipeline</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
             How NOVA AI Protects Your Data
           </h1>
           <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-            Experience a normal general-purpose AI assistant. Behind the scenes, our intelligent privacy gateway strips unnecessary sensitive details before prompts reach downstream models.
+            Ask anything. NOVA AI automatically prevents unnecessary sensitive information from reaching downstream AI models while delivering natural, intelligent answers.
           </p>
         </div>
 
@@ -164,7 +164,7 @@ export const HowItWorksPage: React.FC = () => {
             <div className="lg:col-span-6">
               <div className="p-5 rounded-2xl bg-slate-950 text-slate-100 font-mono text-xs sm:text-sm leading-relaxed border border-slate-800 shadow-inner">
                 <div className="text-slate-400 text-[11px] mb-2 uppercase tracking-wider font-bold">
-                  Step {activeStep + 1} Demonstration
+                  Stage {activeStep + 1} Pipeline Logic
                 </div>
                 {steps[activeStep].example}
               </div>
@@ -176,7 +176,7 @@ export const HowItWorksPage: React.FC = () => {
         <div className="text-center">
           <Link to="/chat">
             <Button size="lg" variant="primary" icon={<ArrowRight className="w-4 h-4 ml-1" />}>
-              Try Asking Any Question →
+              Open NOVA AI Chat →
             </Button>
           </Link>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, User, Copy, Check, ThumbsUp, ThumbsDown, RotateCw, Code } from 'lucide-react';
+import { Sparkles, User, Copy, Check, ThumbsUp, ThumbsDown, RotateCw, Code, Paperclip } from 'lucide-react';
 import { ChatMessage } from '../../types';
 
 interface ChatMessageItemProps {
@@ -134,8 +134,30 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, onReg
     return (
       <div className="flex justify-end my-4">
         <div className="flex items-start gap-2.5 max-w-2xl">
-          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm text-sm sm:text-base leading-relaxed break-words">
-            {message.content}
+          <div className="space-y-2">
+            {message.attachment && (
+              <div className="flex flex-col gap-1.5 p-2 rounded-2xl bg-violet-600/30 backdrop-blur-md border border-white/20 text-white text-xs font-medium max-w-sm ml-auto">
+                {message.attachment.mimeType?.startsWith('image/') && message.attachment.url ? (
+                  <img
+                    src={message.attachment.url}
+                    alt={message.attachment.originalName}
+                    className="max-h-44 w-auto rounded-xl object-cover border border-white/10"
+                  />
+                ) : null}
+                <div className="flex items-center gap-1.5 px-1 py-0.5">
+                  <Paperclip className="w-3.5 h-3.5 shrink-0 opacity-80" />
+                  <span className="truncate">{message.attachment.originalName}</span>
+                  {message.attachment.size && (
+                    <span className="text-[10px] opacity-75 shrink-0 ml-auto">
+                      ({(message.attachment.size / 1024).toFixed(0)} KB)
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm text-sm sm:text-base leading-relaxed break-words">
+              {message.content}
+            </div>
           </div>
           <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 shrink-0 mt-0.5">
             <User className="w-4 h-4" />

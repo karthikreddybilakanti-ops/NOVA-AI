@@ -31,10 +31,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickDemo = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-  };
+
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 bg-[#fafafa]">
@@ -115,27 +112,6 @@ export const LoginPage: React.FC = () => {
             {isLoading ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
-
-        {/* Quick Demo Pre-fill */}
-        <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-          <p className="text-[11px] text-slate-400 mb-2 font-medium">Quick Demo Accounts:</p>
-          <div className="flex justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('user@nova.ai', 'user123')}
-              className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-violet-50 text-slate-700 hover:text-violet-700 border border-slate-200 transition-colors"
-            >
-              Demo User (user@nova.ai)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('karthik@example.com', 'password123')}
-              className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-violet-50 text-slate-700 hover:text-violet-700 border border-slate-200 transition-colors"
-            >
-              Karthik (karthik@example.com)
-            </button>
-          </div>
-        </div>
 
         <div className="mt-6 text-center text-xs text-slate-500">
           Don't have an account?{' '}

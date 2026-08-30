@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { globalPipeline } from '../privacy/pipeline.js';
 import { globalConversationStore } from '../chat/conversationStore.js';
-import { globalAuthStore } from '../auth/authStore.js';
+import { globalAuthService } from '../auth/authService.js';
 import { FileProcessor } from '../chat/fileProcessor.js';
 import { uploadToSupabaseStorage } from '../supabase.js';
 import { NovaModelId } from '../types.js';
@@ -14,12 +14,12 @@ const upload = multer({
 
 export const chatRouter = Router();
 
-// Helper to extract user from Authorization header
-function getAuthUser(req: Request) {
+// Helper to extract user from Authorization header using persistent Supabase auth token
+async function getAuthUser(req: Request) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.split(' ')[1];
-  return globalAuthStore.getUserByToken(token);
+  return await globalAuthService.getUserByToken(token);
 }
 
 // 1. File Upload Endpoint (for Attachments: PDF, TXT, CSV, DOCX, images)
@@ -69,16 +69,16 @@ chatRouter.get('/models', (_req: Request, res: Response) => {
 });
 
 // 3. User Conversations List
-chatRouter.get('/conversations', (req: Request, res: Response) => {
-  const user = getAuthUser(req);
+chatRouter.get('/conversations', async (req: Request, res: Response) => {
+  const user = await getAuthUser(req);
   const userId = user ? user.id : 'anon-user';
   const conversations = globalConversationStore.getUserConversations(userId);
   res.json({ conversations });
 });
 
 // 4. Create New Conversation
-chatRouter.post('/conversations', (req: Request, res: Response) => {
-  const user = getAuthUser(req);
+chatRouter.post('/conversations', async (req: Request, res: Response) => {
+  const user = await getAuthUser(req);
   const userId = user ? user.id : 'anon-user';
   const { title, modelId } = req.body;
   const conversation = globalConversationStore.createConversation(
@@ -118,7 +118,7 @@ chatRouter.post('/message', async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const user = getAuthUser(req);
+    const user = await getAuthUser(req);
     const userId = user ? user.id : 'anon-user';
     const selectedModel: NovaModelId = modelId || 'nova-smart';
 
@@ -140,21 +140,23 @@ chatRouter.post('/message', async (req: Request, res: Response): Promise<void> =
       content: m.content,
     }));
 
-    // 3. Log user message
-    globalConversationStore.addMessage(
-      convId,
-      'user',
-      prompt.trim(),
-      selectedModel
-    );
-
-    // 4. Run through Privacy Pipeline BEFORE model receives it!
+    // 3. Run through Privacy Pipeline BEFORE model receives it!
     const result = await globalPipeline.process(
       prompt.trim(),
       selectedModel,
       convId,
       userId,
       history,
+      attachment
+    );
+
+    // 4. Store user message using privacy-safe minimized text with attachment (Sections 12 & 19)
+    globalConversationStore.addMessage(
+      convId,
+      'user',
+      result.sanitizedPrompt,
+      selectedModel,
+      undefined,
       attachment
     );
 
@@ -167,11 +169,12 @@ chatRouter.post('/message', async (req: Request, res: Response): Promise<void> =
       result.trace_id
     );
 
-    // 6. Return response to user
+    // 6. Return response to user with privacy-safe sanitizedPrompt
     res.json({
       messageId: result.messageId,
       conversationId: result.conversationId,
       answer: result.answer,
+      sanitizedPrompt: result.sanitizedPrompt,
       modelId: result.modelId,
       model: result.model,
       latency_ms: result.latency_ms,

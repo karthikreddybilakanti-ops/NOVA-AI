@@ -1,4 +1,5 @@
-import { ShieldCheck, Sparkles } from 'lucide-react';
+import React from 'react';
+import { ShieldCheck, Sparkles, EyeOff } from 'lucide-react';
 import { DetectedEntity } from '../../types';
 
 interface SanitizedPromptProps {
@@ -14,15 +15,14 @@ export const SanitizedPrompt: React.FC<SanitizedPromptProps> = ({
 }) => {
   const isDifferent = rawPrompt !== sanitizedPrompt;
 
-  // Highlight detected substrings in raw prompt
-  const renderHighlightedPrompt = () => {
+  // Render privacy-safe redacted view of original prompt
+  const renderPrivacySafeOriginalPrompt = () => {
     if (!detections.length) {
       return <span>{rawPrompt}</span>;
     }
 
     let lastIndex = 0;
     const elements: React.ReactNode[] = [];
-
     const sorted = [...detections].sort((a, b) => a.startIndex - b.startIndex);
 
     sorted.forEach((d, idx) => {
@@ -34,10 +34,10 @@ export const SanitizedPrompt: React.FC<SanitizedPromptProps> = ({
       elements.push(
         <mark
           key={`mark-${d.id}`}
-          className="bg-amber-100 text-amber-900 border-b-2 border-amber-400 px-1 py-0.5 rounded font-semibold"
-          title={`${d.category} (${d.confidence}%)`}
+          className="bg-amber-100/90 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded font-mono text-[11px] font-semibold"
+          title={`Detected ${d.category} (${d.confidence}%) — Protected`}
         >
-          {rawPrompt.substring(d.startIndex, d.endIndex)}
+          [REDACTED: {d.category.toUpperCase()}]
         </mark>
       );
       lastIndex = d.endIndex;
@@ -52,18 +52,19 @@ export const SanitizedPrompt: React.FC<SanitizedPromptProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Original Prompt */}
+      {/* Privacy-Safe Original Prompt View */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Original User Prompt (Raw)
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+            Original User Prompt (Privacy-Safe View)
           </span>
           <span className="text-[11px] text-slate-400 font-mono">
             {rawPrompt.length} characters
           </span>
         </div>
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-800 leading-relaxed break-words">
-          {renderHighlightedPrompt()}
+          {renderPrivacySafeOriginalPrompt()}
         </div>
       </div>
 
@@ -93,7 +94,8 @@ export const SanitizedPrompt: React.FC<SanitizedPromptProps> = ({
           </strong>
         </div>
         {isDifferent && (
-          <span className="text-emerald-700 font-medium">
+          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5" />
             Protected Before AI
           </span>
         )}

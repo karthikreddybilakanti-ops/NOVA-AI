@@ -93,7 +93,15 @@ export class ConversationStore {
     role: 'user' | 'assistant',
     content: string,
     modelId?: NovaModelId,
-    traceId?: string
+    traceId?: string,
+    attachment?: {
+      id?: string;
+      originalName: string;
+      mimeType: string;
+      size?: number;
+      url?: string;
+      extractedText?: string;
+    }
   ): MessageRecord {
     const conv = this.conversations.get(conversationId);
     const now = new Date().toISOString();
@@ -103,6 +111,7 @@ export class ConversationStore {
       conversation_id: conversationId,
       role,
       content,
+      attachment,
       model_id: modelId || conv?.model_id || 'nova-smart',
       trace_id: traceId,
       created_at: now,

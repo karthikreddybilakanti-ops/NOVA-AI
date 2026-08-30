@@ -55,6 +55,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     };
   }, []);
 
+  const isSubmittingRef = useRef(false);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -63,14 +65,25 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   };
 
   const handleSubmit = () => {
-    if ((!prompt.trim() && !attachment) || isLoading || isUploading) return;
-    onSend(prompt.trim() || `Analyze document: ${attachment?.originalName}`, attachment);
+    if ((!prompt.trim() && !attachment) || isLoading || isUploading || isSubmittingRef.current) return;
+    
+    isSubmittingRef.current = true;
+    const textToSend = prompt.trim() || (attachment ? 'Please summarize and analyze this attachment.' : '');
+    const attachToSend = attachment;
+
     setPrompt('');
     setAttachment(null);
     setUploadError(null);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
+
+    onSend(textToSend, attachToSend);
+
+    // Release lock after short debounce
+    setTimeout(() => {
+      isSubmittingRef.current = false;
+    }, 400);
   };
 
   // 1. File Attachment Handling
@@ -131,18 +144,39 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
+      // Store initial text before voice starts
+      const initialBasePrompt = prompt.trim();
+      let accumulatedFinal = '';
+
       recognition.onstart = () => {
         setIsListening(true);
       };
 
       recognition.onresult = (event: any) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
+        let finalChunk = '';
+        let interimChunk = '';
+
+        for (let i = 0; i < event.results.length; i++) {
+          const res = event.results[i];
+          if (res.isFinal) {
+            finalChunk += res[0].transcript + ' ';
+          } else {
+            interimChunk += res[0].transcript;
+          }
         }
-        if (transcript) {
-          setPrompt((prev) => (prev ? `${prev.trim()} ${transcript}` : transcript));
+
+        accumulatedFinal = finalChunk.trim();
+        const currentInterim = interimChunk.trim();
+
+        let updated = initialBasePrompt;
+        if (accumulatedFinal) {
+          updated = updated ? `${updated} ${accumulatedFinal}` : accumulatedFinal;
         }
+        if (currentInterim) {
+          updated = updated ? `${updated} ${currentInterim}` : currentInterim;
+        }
+
+        setPrompt(updated);
       };
 
       recognition.onerror = (event: any) => {

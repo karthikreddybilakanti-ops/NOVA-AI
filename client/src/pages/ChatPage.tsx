@@ -102,7 +102,7 @@ export const ChatPage: React.FC = () => {
   const handleSendMessage = async (promptText: string, attachment?: UploadedAttachment | null) => {
     if ((!promptText.trim() && !attachment) || isLoading) return;
 
-    const displayPrompt = promptText.trim() || `Analyze attachment: ${attachment?.originalName}`;
+    const displayPrompt = promptText.trim() || (attachment ? 'Please summarize and analyze this attachment.' : '');
 
     // Temporary local message representation
     const tempUserMsg: ChatMessage = {
@@ -110,6 +110,7 @@ export const ChatPage: React.FC = () => {
       conversation_id: currentConversation?.id || '',
       role: 'user',
       content: displayPrompt,
+      attachment: attachment || undefined,
       model_id: selectedModelId,
       created_at: new Date().toISOString(),
     };
@@ -135,7 +136,13 @@ export const ChatPage: React.FC = () => {
         created_at: new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev, aiMsg]);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempUserMsg.id && response.sanitizedPrompt
+            ? { ...msg, content: response.sanitizedPrompt }
+            : msg
+        ).concat(aiMsg)
+      );
 
       // If this was a new conversation, update route & reload list
       if (!currentConversation || currentConversation.id !== response.conversationId) {

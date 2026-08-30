@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { globalAuthStore } from '../auth/authStore.js';
-import { supabase } from '../supabase.js';
+import { globalAuthService } from '../auth/authService.js';
 
 export const authRouter = Router();
 
@@ -13,35 +12,7 @@ authRouter.post('/signup', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const cleanEmail = email.toLowerCase().trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      res.status(400).json({ error: 'Please enter a valid email address.' });
-      return;
-    }
-
-    if (password.length < 6) {
-      res.status(400).json({ error: 'Password must be at least 6 characters long.' });
-      return;
-    }
-
-    // Register user in store
-    const { user, token } = globalAuthStore.register(name || 'Nova User', cleanEmail, password);
-
-    // Optional Supabase Auth synchronization if Supabase is configured
-    if (supabase) {
-      try {
-        await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            data: { name: user.name, role: user.role },
-          },
-        });
-      } catch (sbErr: any) {
-        console.warn('[Supabase Sync Warning]:', sbErr.message);
-      }
-    }
-
+    const { user, token } = await globalAuthService.signUp(name || 'Nova User', email, password);
     res.status(201).json({ user, token });
   } catch (error: any) {
     console.error('[Signup Error]:', error.message);
@@ -58,9 +29,7 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const cleanEmail = email.toLowerCase().trim();
-    const { user, token } = globalAuthStore.login(cleanEmail, password);
-
+    const { user, token } = await globalAuthService.login(email, password);
     res.json({ user, token });
   } catch (error: any) {
     console.error('[Login Error]:', error.message);
@@ -77,9 +46,7 @@ authRouter.post('/admin-login', async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const cleanEmail = email.toLowerCase().trim();
-    const { user, token } = globalAuthStore.adminLogin(cleanEmail, password);
-
+    const { user, token } = await globalAuthService.adminLogin(email, password);
     res.json({ user, token });
   } catch (error: any) {
     console.error('[Admin Login Error]:', error.message);
@@ -87,7 +54,12 @@ authRouter.post('/admin-login', async (req: Request, res: Response): Promise<voi
   }
 });
 
-// 4. Forgot Password
+// 4. Logout / Session Clearing
+authRouter.post('/logout', (_req: Request, res: Response): void => {
+  res.json({ success: true, message: 'Session logged out successfully.' });
+});
+
+// 5. Forgot Password
 authRouter.post('/forgot-password', (req: Request, res: Response): void => {
   const { email } = req.body;
   if (!email) {
@@ -97,16 +69,26 @@ authRouter.post('/forgot-password', (req: Request, res: Response): void => {
   res.json({ message: 'If an account with this email exists, a password reset link has been dispatched.' });
 });
 
-// 5. Get Current User Profile
-authRouter.get('/me', (req: Request, res: Response): void => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : '';
+// 6. Get Current User Profile (Session Persistence)
+authRouter.get('/me', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : '';
 
-  const user = globalAuthStore.getUserByToken(token);
-  if (!user) {
-    res.status(401).json({ error: 'Unauthorized or expired session.' });
-    return;
+    if (!token) {
+      res.status(401).json({ error: 'Unauthorized or expired session.' });
+      return;
+    }
+
+    const user = await globalAuthService.getUserByToken(token);
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized or expired session.' });
+      return;
+    }
+
+    res.json({ user });
+  } catch (err: any) {
+    console.error('[Auth Profile Error]:', err.message);
+    res.status(401).json({ error: 'Invalid session token.' });
   }
-
-  res.json({ user });
 });
