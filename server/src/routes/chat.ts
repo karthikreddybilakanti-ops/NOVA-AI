@@ -115,7 +115,7 @@ chatRouter.post('/message', async (req: Request, res: Response): Promise<void> =
     const { prompt, modelId, conversationId, attachment } = req.body;
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-      res.status(400).json({ error: 'Prompt is required and cannot be empty.' });
+      res.status(400).json({ error: attachment ? 'Please enter a message about the attachment.' : 'Prompt is required and cannot be empty.' });
       return;
     }
 

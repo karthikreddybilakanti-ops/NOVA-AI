@@ -65,7 +65,14 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   };
 
   const handleSubmit = () => {
-    if (!prompt.trim() || isLoading || isUploading || isSubmittingRef.current) return;
+    if (isLoading || isUploading || isSubmittingRef.current) return;
+
+    if (!prompt.trim()) {
+      if (attachment) {
+        setUploadError('Please enter a message about the attachment.');
+      }
+      return;
+    }
     
     isSubmittingRef.current = true;
     const textToSend = prompt.trim();
