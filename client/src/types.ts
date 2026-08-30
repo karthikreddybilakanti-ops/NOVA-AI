@@ -33,6 +33,7 @@ export interface UploadedAttachment {
   size?: number;
   url?: string;
   extractedText?: string;
+  base64Data?: string;
 }
 
 export interface ChatMessage {

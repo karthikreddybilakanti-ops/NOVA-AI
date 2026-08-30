@@ -11,6 +11,7 @@ export interface ProcessedFile {
   summary: string;
   isDocument: boolean;
   isImage: boolean;
+  base64Data?: string;
 }
 
 export class FileProcessor {
@@ -26,6 +27,7 @@ export class FileProcessor {
     const sizeBytes = fileBuffer.length;
     let extractedText = '';
     const isImage = mimeType.startsWith('image/') || ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.bmp', '.tiff'].includes(ext);
+    const base64Data = isImage || fileBuffer.length <= 4 * 1024 * 1024 ? fileBuffer.toString('base64') : undefined;
 
     // 1. PDF Files: Real PDF parser (decompresses Flate streams, extracts text hierarchy)
     if (ext === '.pdf' || mimeType === 'application/pdf') {
@@ -71,6 +73,7 @@ export class FileProcessor {
       summary,
       isDocument: !isImage,
       isImage,
+      base64Data,
     };
   }
 

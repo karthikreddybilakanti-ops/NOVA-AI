@@ -105,6 +105,7 @@ export interface MessageRecord {
     size?: number;
     url?: string;
     extractedText?: string;
+    base64Data?: string;
   };
   model_id?: NovaModelId;
   trace_id?: string;

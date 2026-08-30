@@ -9,6 +9,7 @@ export interface AttachmentContext {
   originalName: string;
   mimeType: string;
   extractedText: string;
+  base64Data?: string;
 }
 
 export interface AICompletionResult {
@@ -26,17 +27,17 @@ export class AIService {
   ): Promise<AICompletionResult> {
     const startTime = Date.now();
 
-    // 1. External Gemini API integration if configured
+    // 1. External Gemini API integration if configured (with native multimodal vision)
     if (process.env.GEMINI_API_KEY) {
       try {
         const apiKey = process.env.GEMINI_API_KEY;
-        const geminiContents: { role: string; parts: { text: string }[] }[] = [];
+        const geminiContents: { role: string; parts: any[] }[] = [];
 
         // Add conversational system prompt
         const systemPrompt =
           'You are NOVA AI, a privacy-first, highly capable, intelligent, natural, and empathetic general-purpose AI assistant. ' +
           'Adapt your tone to the user\'s context, emotion, and technical depth. Answer directly, clearly, and insightfully. ' +
-          'When analyzing documents or images, ground your answers directly on the extracted content provided.';
+          'When analyzing documents or images, ground your answers directly on the content provided.';
 
         geminiContents.push({
           role: 'user',
@@ -47,7 +48,7 @@ export class AIService {
           parts: [{ text: 'Understood. I am NOVA AI, ready to assist naturally, empathetically, and accurately.' }],
         });
 
-        // Add history
+        // Add multi-turn history
         for (const h of history) {
           geminiContents.push({
             role: h.role === 'user' ? 'user' : 'model',
@@ -55,15 +56,26 @@ export class AIService {
           });
         }
 
-        // Add user prompt with attachment context if present
-        let userPromptWithAttachment = sanitizedPrompt;
-        if (attachment && attachment.extractedText) {
-          userPromptWithAttachment = `[Uploaded File: "${attachment.originalName}" (${attachment.mimeType})]\n--- File Content Start ---\n${attachment.extractedText.slice(0, 15000)}\n--- File Content End ---\n\nUser Request: ${sanitizedPrompt}`;
+        // Add user prompt with attachment context & native vision if available
+        const currentParts: any[] = [];
+        if (attachment && attachment.base64Data && attachment.mimeType.startsWith('image/')) {
+          currentParts.push({
+            inlineData: {
+              mimeType: attachment.mimeType,
+              data: attachment.base64Data,
+            },
+          });
         }
 
+        let userPromptWithAttachment = sanitizedPrompt;
+        if (attachment && attachment.extractedText) {
+          userPromptWithAttachment = `[Uploaded File: "${attachment.originalName}" (${attachment.mimeType})]\n--- File Content Start ---\n${attachment.extractedText.slice(0, 20000)}\n--- File Content End ---\n\nUser Request: ${sanitizedPrompt}`;
+        }
+
+        currentParts.push({ text: userPromptWithAttachment });
         geminiContents.push({
           role: 'user',
-          parts: [{ text: userPromptWithAttachment }],
+          parts: currentParts,
         });
 
         const res = await fetch(
@@ -91,16 +103,11 @@ export class AIService {
       }
     }
 
-    // 2. External OpenAI API integration if configured
+    // 2. External OpenAI API integration if configured (with native multimodal vision)
     if (process.env.OPENAI_API_KEY) {
       try {
         const apiKey = process.env.OPENAI_API_KEY;
-        let promptText = sanitizedPrompt;
-        if (attachment && attachment.extractedText) {
-          promptText = `[Uploaded File: "${attachment.originalName}" (${attachment.mimeType})]\n--- File Content Start ---\n${attachment.extractedText.slice(0, 15000)}\n--- File Content End ---\n\nUser Request: ${sanitizedPrompt}`;
-        }
-
-        const messages = [
+        const messages: any[] = [
           {
             role: 'system',
             content:
@@ -109,8 +116,29 @@ export class AIService {
               'When documents or images are attached, ground your answers specifically on the provided file content.',
           },
           ...history.map((h) => ({ role: h.role, content: h.content })),
-          { role: 'user', content: promptText },
         ];
+
+        let promptText = sanitizedPrompt;
+        if (attachment && attachment.extractedText) {
+          promptText = `[Uploaded File: "${attachment.originalName}" (${attachment.mimeType})]\n--- File Content Start ---\n${attachment.extractedText.slice(0, 20000)}\n--- File Content End ---\n\nUser Request: ${sanitizedPrompt}`;
+        }
+
+        if (attachment && attachment.base64Data && attachment.mimeType.startsWith('image/')) {
+          messages.push({
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${attachment.mimeType};base64,${attachment.base64Data}`,
+                },
+              },
+              { type: 'text', text: promptText },
+            ],
+          });
+        } else {
+          messages.push({ role: 'user', content: promptText });
+        }
 
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -147,7 +175,7 @@ export class AIService {
     return {
       response,
       model: this.getModelDisplayName(modelId),
-      latency_ms: Math.max(latency_ms, modelId === 'nova-fast' ? 80 : modelId === 'nova-reasoning' ? 220 : 140),
+      latency_ms: Math.max(latency_ms, modelId === 'nova-fast' ? 70 : modelId === 'nova-reasoning' ? 200 : 130),
     };
   }
 
@@ -176,13 +204,13 @@ export class AIService {
     const lower = p.toLowerCase();
 
     // Natural processing latency
-    const delayMs = modelId === 'nova-fast' ? 60 : modelId === 'nova-reasoning' ? 180 : 110;
+    const delayMs = modelId === 'nova-fast' ? 50 : modelId === 'nova-reasoning' ? 160 : 90;
     await new Promise((r) => setTimeout(r, delayMs));
 
     // =========================================================================
     // SECTION A: GROUNDED ATTACHMENT / FILE / SCREENSHOT UNDERSTANDING
     // =========================================================================
-    if (attachment && attachment.extractedText && attachment.extractedText.trim().length > 0) {
+    if (attachment) {
       return this.analyzeAttachmentGrounded(p, attachment, history);
     }
 
@@ -214,9 +242,7 @@ export class AIService {
       return `You're very welcome! If you need help with anything else or have follow-up questions, just let me know.`;
     }
 
-    // =========================================================================
-    // SECTION C: DIRECT MATHEMATICAL EVALUATION
-    // =========================================================================
+    // Direct mathematical expression
     const mathClean = p.replace(/\s+/g, '');
     if (/^[0-9+\-*/().%^]+$/.test(mathClean)) {
       try {
@@ -233,7 +259,7 @@ export class AIService {
     }
 
     // =========================================================================
-    // SECTION D: MULTI-TURN CONTINUITY & CONTEXT-AWARE RESOLUTION
+    // SECTION C: MULTI-TURN CONTINUITY & CONTEXT-AWARE RESOLUTION
     // =========================================================================
     if (history.length > 0) {
       const lastUserMsg = history.filter((h) => h.role === 'user').slice(-1)[0]?.content || '';
@@ -256,7 +282,7 @@ export class AIService {
     }
 
     // =========================================================================
-    // SECTION E: SEMANTIC KNOWLEDGE SYNTHESIS & SITUATIONAL EMPATHY
+    // SECTION D: GENERAL MULTI-DOMAIN KNOWLEDGE & SITUATIONAL EMPATHY
     // =========================================================================
     return this.synthesizeGeneralKnowledgeResponse(p, history);
   }
@@ -269,26 +295,28 @@ export class AIService {
     attachment: AttachmentContext,
     history: ChatHistoryMessage[]
   ): string {
-    const lower = prompt.toLowerCase();
-    const docText = attachment.extractedText.trim();
+    const docText = (attachment.extractedText || '').trim();
     const docName = attachment.originalName;
     const isImage = attachment.mimeType.startsWith('image/');
+    const lower = prompt.toLowerCase();
+
+    // Check if extraction failed or returned empty
+    if (!docText || docText.length === 0) {
+      return `I was unable to extract readable text from **"${docName}"**. Please ensure the file is not empty, password-protected, or corrupted, or try uploading in a supported format (PDF, DOCX, TXT, CSV, PNG, JPG).`;
+    }
 
     // Break document into distinct lines and sentences
     const lines = docText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
     const sentences = docText.split(/[.!?\n]+/).map((s) => s.trim()).filter((s) => s.length > 10);
 
-    // 1. Transaction / Failure / Receipt Analysis
+    // 1. Transaction / Receipt / Failure Troubleshooting
     const hasFailureKeywords = lower.includes('fail') || lower.includes('decline') || lower.includes('why') || docText.toLowerCase().includes('fail');
     const isReceiptOrFinance = docText.toLowerCase().includes('receipt') || docText.toLowerCase().includes('transaction') || docText.toLowerCase().includes('account') || docText.toLowerCase().includes('amount') || docText.includes('$') || docText.includes('₹');
 
     if (hasFailureKeywords && isReceiptOrFinance) {
-      // Find amount, failure reason, or status
       const amountMatch = docText.match(/(?:₹|\$|USD|INR|EUR)?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})?/i);
       const amountStr = amountMatch ? amountMatch[0].trim() : '';
-
-      // Find status line or failure notice
-      const reasonLine = lines.find((l) => /reason|status|error|message/i.test(l)) || '';
+      const reasonLine = lines.find((l) => /reason|status|error|message|declined/i.test(l)) || '';
 
       let answer = `Based on the uploaded ${isImage ? 'screenshot' : 'document'} **"${docName}"**:\n\n`;
       answer += `The transaction ${amountStr ? `of **${amountStr}** ` : ''}is marked as **FAILED**.\n\n`;
@@ -298,12 +326,12 @@ export class AIService {
       }
 
       answer += `### Probable Causes:\n` +
-        `1. **Bank Gateway Timeout / Network Issue:** The clearing switch or recipient bank took too long to acknowledge receipt.\n` +
-        `2. **Limit Restrictions:** Daily transfer quotas or automated verification safeguards may have flagged the transaction.\n` +
-        `3. **Account / Details Mismatch:** Inactive beneficiary status or routing mismatch.\n\n` +
+        `1. **Bank Gateway Timeout / Network Latency:** The clearing switch or recipient bank server timed out during verification.\n` +
+        `2. **Transfer Limit / Security Guard:** Daily transaction limits or automated verification safeguards may have temporarily held the transfer.\n` +
+        `3. **Beneficiary Mismatch:** Routing code or account status discrepancy.\n\n` +
         `### Recommended Steps:\n` +
-        `- **Auto-Reversal:** If funds were debited, standard banking networks auto-reverse failed transfers within **24 to 48 business hours**.\n` +
-        `- **UTR Tracking:** Keep the Unique Transaction Reference (UTR) or receipt reference for customer support trace.`;
+        `- **Auto-Reversal Window:** If funds were debited, standard banking networks auto-reverse failed transfers within **24 to 48 business hours**.\n` +
+        `- **UTR / ARN Tracking:** Keep the Unique Transaction Reference (UTR) number from your receipt for customer support tracking.`;
 
       return answer;
     }
@@ -316,7 +344,7 @@ export class AIService {
 
       if (dateLines.length > 0) {
         return `Based on **"${docName}"**, here are the key dates and milestones identified:\n\n` +
-          dateLines.map((d) => `- **${d}**`).join('\n') +
+          dateLines.map((d) => `- **${d.replace(/^[-•\d.]*\s*/, '')}**`).join('\n') +
           `\n\nLet me know if you would like more details about any specific phase!`;
       }
     }
@@ -470,13 +498,13 @@ export class AIService {
   }
 
   /**
-   * Synthesizes comprehensive general multi-domain responses
+   * Synthesizes comprehensive general multi-domain responses with situational empathy
    */
   private synthesizeGeneralKnowledgeResponse(prompt: string, history: ChatHistoryMessage[]): string {
     const p = prompt.trim();
     const lower = p.toLowerCase();
 
-    // Check for user emotional state (Frustration / Trouble)
+    // Check for user emotional state (Frustration / Trouble / Difficulty)
     const isFrustrated =
       lower.includes('frustrat') ||
       lower.includes('stuck') ||

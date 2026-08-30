@@ -52,6 +52,7 @@ chatRouter.post(
           sizeBytes: processed.sizeBytes,
           summary: processed.summary,
           extractedText: processed.extractedText,
+          base64Data: processed.base64Data,
           storageUrl: storageUpload.url || undefined,
         },
       });
