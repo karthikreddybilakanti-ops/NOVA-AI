@@ -132,7 +132,7 @@ export class AIService {
         console.log(`[AI Service] Google Gemini Interactions API (${targetModel}) responded in ${latency_ms}ms.`);
         return {
           response: responseText.trim(),
-          model: 'Google Gemini 3.6 Flash',
+          model: 'NOVA AI',
           latency_ms,
         };
       } catch (err: any) {
