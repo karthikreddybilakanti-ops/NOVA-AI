@@ -15,11 +15,49 @@ export class ConversationStore {
   ];
 
   public getModels(): NovaModelConfig[] {
-    return this.models;
+    const isGemini = !!process.env.GEMINI_API_KEY;
+    const isOpenAI = !!process.env.OPENAI_API_KEY;
+
+    if (isGemini) {
+      return [
+        {
+          id: 'nova-smart',
+          name: 'Google Gemini 1.5 Flash',
+          tagline: 'Multimodal general-purpose AI model',
+          description: 'Direct integration with Google Gemini 1.5 Flash for multimodal reasoning and chat.',
+          badge: 'Active',
+          enabled: true,
+        },
+      ];
+    }
+
+    if (isOpenAI) {
+      return [
+        {
+          id: 'nova-smart',
+          name: 'OpenAI GPT-4o',
+          tagline: 'High-intelligence multimodal model',
+          description: 'Direct integration with OpenAI GPT-4o for complex reasoning and multimodal analysis.',
+          badge: 'Active',
+          enabled: true,
+        },
+      ];
+    }
+
+    return [
+      {
+        id: 'nova-smart',
+        name: 'AI Assistant',
+        tagline: 'Configured AI Model',
+        description: 'Direct AI provider gateway (requires GEMINI_API_KEY or OPENAI_API_KEY).',
+        badge: 'Offline',
+        enabled: true,
+      },
+    ];
   }
 
   public getModelById(id: NovaModelId): NovaModelConfig | undefined {
-    return this.models.find((m) => m.id === id);
+    return this.getModels().find((m) => m.id === id);
   }
 
   public toggleModel(id: NovaModelId): NovaModelConfig | null {
