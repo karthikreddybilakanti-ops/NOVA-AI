@@ -4,9 +4,7 @@ import {
   LayoutDashboard,
   FileText,
   Activity,
-  Cpu,
   Users,
-  MessageSquare,
   LogOut,
   ShieldAlert,
   ArrowLeft,
@@ -22,9 +20,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
     { label: 'Overview', path: '/admin', icon: LayoutDashboard },
     { label: 'Live Requests', path: '/admin/requests', icon: FileText },
     { label: 'Privacy Verification', path: '/admin/verification', icon: Activity },
-    { label: 'Models', path: '/admin/models', icon: Cpu },
     { label: 'Users', path: '/admin/users', icon: Users },
-    { label: 'Feedback', path: '/admin/feedback', icon: MessageSquare },
   ];
 
   const handleLogout = () => {

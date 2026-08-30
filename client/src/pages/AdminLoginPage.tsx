@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ShieldAlert, Lock, Mail, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShieldAlert, Lock, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const AdminLoginPage: React.FC = () => {
@@ -101,12 +101,8 @@ export const AdminLoginPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-          <Link to="/" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to User Site</span>
-          </Link>
-          <span className="font-mono text-[11px] text-slate-500">v3.0 Security Portal</span>
+        <div className="mt-8 pt-4 border-t border-slate-800 flex items-center justify-center text-xs text-slate-500 font-mono text-[11px]">
+          <span>Authorized Security Access Portal</span>
         </div>
       </div>
     </div>

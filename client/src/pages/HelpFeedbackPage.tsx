@@ -56,9 +56,9 @@ export const HelpFeedbackPage: React.FC = () => {
       icon: Mic,
     },
     {
-      q: 'What is the difference between Nova Smart, Reasoning, and Fast?',
-      a: 'Nova Smart is the balanced default for everyday questions and coding. Nova Reasoning performs deep chain-of-thought analysis for complex math and architecture. Nova Fast delivers ultra-low latency concise responses.',
-      icon: MessageSquare,
+      q: 'How does NOVA AI protect sensitive data in images and attachments?',
+      a: 'Whether you type text, speak via voice recording, or upload documents and image screenshots, all content passes through our pre-AI privacy gateway. Unnecessary account numbers, credentials, and personal identifiers are redacted before reaching the AI model, allowing you to get answers safely.',
+      icon: ShieldCheck,
     },
   ];
 

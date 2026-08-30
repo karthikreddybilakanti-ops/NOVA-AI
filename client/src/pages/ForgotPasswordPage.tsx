@@ -1,21 +1,29 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Mail, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '../components/common/Button';
+import { forgotPasswordApi } from '../services/api';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
+    setError(null);
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+
+    try {
+      await forgotPasswordApi(email.trim());
       setSent(true);
-    }, 600);
+    } catch (err: any) {
+      setError(err.message || 'Failed to dispatch password reset link.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -28,6 +36,13 @@ export const ForgotPasswordPage: React.FC = () => {
           <h2 className="text-2xl font-extrabold text-slate-900">Reset Password</h2>
           <p className="text-xs text-slate-500 mt-1">Enter your email to receive recovery instructions</p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {sent ? (
           <div className="text-center space-y-4">

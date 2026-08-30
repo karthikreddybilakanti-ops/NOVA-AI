@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Sparkles, BrainCircuit, Zap, Check } from 'lucide-react';
+import { ChevronDown, Sparkles, Check } from 'lucide-react';
 import { NovaModelConfig, NovaModelId } from '../../types';
 
 interface ModelSelectorProps {
@@ -18,9 +18,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   const selectedModel = models.find((m) => m.id === selectedModelId) || models[0] || {
     id: 'nova-smart',
-    name: 'Nova Smart',
-    tagline: 'Best for everyday questions',
-    badge: 'Recommended',
+    name: 'NOVA AI Assistant',
+    tagline: 'General-purpose privacy-first AI',
+    badge: 'Active',
   };
 
   useEffect(() => {
@@ -33,17 +33,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getModelIcon = (id: NovaModelId) => {
-    switch (id) {
-      case 'nova-reasoning':
-        return <BrainCircuit className="w-4 h-4 text-purple-600" />;
-      case 'nova-fast':
-        return <Zap className="w-4 h-4 text-amber-500" />;
-      case 'nova-smart':
-      default:
-        return <Sparkles className="w-4 h-4 text-violet-600" />;
-    }
+  const getModelIcon = (_id?: NovaModelId) => {
+    return <Sparkles className="w-4 h-4 text-violet-600" />;
   };
+
+  if (models.length <= 1) {
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/80 border border-slate-200 text-slate-800 text-xs sm:text-sm font-semibold">
+        <Sparkles className="w-4 h-4 text-violet-600" />
+        <span>{selectedModel.name}</span>
+      </div>
+    );
+  }
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>

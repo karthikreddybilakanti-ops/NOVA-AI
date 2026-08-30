@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   Sparkles,
   ArrowRight,
-  ShieldCheck,
   Code2,
   BookOpen,
   Compass,
@@ -22,8 +21,7 @@ export const LandingPage: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-[#fafafa]">
       {/* 1. Hero Section */}
-      <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-32">
-        {/* Subtle background gradients */}
+      <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-28">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-b from-violet-200/40 via-indigo-100/20 to-transparent blur-3xl -z-10 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -58,7 +56,7 @@ export const LandingPage: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg sm:text-xl text-slate-600 font-normal leading-relaxed max-w-2xl mx-auto mb-10"
           >
-            Your privacy-first general-purpose AI assistant. Ask any question, analyze documents and images, and write code while unnecessary sensitive information is kept safe before reaching the AI model.
+            Your privacy-first general-purpose AI assistant. Ask any question, analyze documents and images, and explore topics while unnecessary sensitive information is minimized before reaching the AI model.
           </motion.p>
 
           {/* Action CTAs */}
@@ -79,22 +77,22 @@ export const LandingPage: React.FC = () => {
               </Button>
             </Link>
 
-            <Link to="/help">
+            <Link to="/how-it-works">
               <Button size="lg" variant="secondary" className="px-7 py-3.5 text-base font-medium">
                 How NOVA works
               </Button>
             </Link>
           </motion.div>
 
-          {/* Feature Highlights Grid */}
+          {/* Pillar Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto text-left">
             <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-soft">
               <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center mb-4">
                 <Cpu className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-1.5">General-Purpose Intelligence</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-1.5">General-Purpose AI</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Coding, mathematics, scientific reasoning, creative writing, research, and everyday conversation powered by state-of-the-art AI.
+                Coding, mathematics, scientific analysis, writing, and multi-turn conversations powered by modern generative AI.
               </p>
             </div>
 
@@ -102,9 +100,9 @@ export const LandingPage: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-4">
                 <Lock className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-1.5">Pre-AI Privacy Engine</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-1.5">Privacy Before AI</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Automatically detects and minimizes unnecessary sensitive data—such as financial numbers, credentials, and PII—before requests reach the AI model.
+                Automatically detects and minimizes unnecessary sensitive data—such as financial numbers, credentials, and PII—before AI dispatch.
               </p>
             </div>
 
@@ -112,32 +110,103 @@ export const LandingPage: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
                 <Layers className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-1.5">Multi-Modal Processing</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-1.5">Multi-Modal Inputs</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Attach documents (PDF, DOCX, CSV) or images (receipts, statements) with integrated privacy scanning and OCR extraction.
+                Attach documents (PDF, DOCX, CSV) or image receipts with integrated OCR extraction and voice speech-to-text.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. Capabilities Section */}
+      {/* 2. Detailed "How NOVA Works" Section */}
       <section className="py-20 bg-white border-t border-slate-200/80">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className="text-xs font-bold text-violet-600 uppercase tracking-wider">
+              Architecture & Transparency
+            </span>
+            <h2 className="text-3xl font-extrabold text-slate-900 mt-2 mb-3">
+              How Privacy Works Before the AI
+            </h2>
+            <p className="text-slate-600 text-sm">
+              Your request stays yours. NOVA sends only what the AI model actually needs to solve your problem.
+            </p>
+          </div>
+
+          {/* Visual Step Pipeline Flow */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center mb-16">
+            {[
+              { step: '1', title: 'You Ask', desc: 'Text, voice, or files' },
+              { step: '2', title: 'Understand', desc: 'Intent analysis' },
+              { step: '3', title: 'Detect', desc: 'Sensitive data scan' },
+              { step: '4', title: 'Necessity', desc: 'Task relevance check' },
+              { step: '5', title: 'Minimize', desc: 'Redact unneeded info' },
+              { step: '6', title: 'Real AI', desc: 'Secure model dispatch' },
+              { step: '7', title: 'Answer', desc: 'Intelligent response' },
+            ].map((p, idx) => (
+              <div key={idx} className="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex flex-col items-center justify-center">
+                <span className="w-6 h-6 rounded-full bg-violet-600 text-white font-bold text-[11px] flex items-center justify-center mb-1.5">
+                  {p.step}
+                </span>
+                <span className="text-xs font-bold text-slate-900">{p.title}</span>
+                <span className="text-[10px] text-slate-500">{p.desc}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Three Illustrative Scenario Cards with Placeholders */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200/80 shadow-xs space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-100 text-violet-800 text-[11px] font-bold">
+                Scenario 1: Text & PII
+              </div>
+              <h4 className="text-sm font-bold text-slate-900">Personal Banking & Account Tasks</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                When you ask a banking question containing <code className="text-violet-700 bg-white px-1 rounded">[ACCOUNT NUMBER]</code> and <code className="text-violet-700 bg-white px-1 rounded">[EMAIL]</code>, NOVA strips the private credentials and sends only the problem context to the AI.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200/80 shadow-xs space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-bold">
+                Scenario 2: Image OCR
+              </div>
+              <h4 className="text-sm font-bold text-slate-900">Document & Receipt Screenshots</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Uploaded images undergo OCR scanning. Unnecessary personal tokens like <code className="text-indigo-700 bg-white px-1 rounded">[CARD NUMBER]</code> are redacted before the AI analyzes failure codes or amounts.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200/80 shadow-xs space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 text-[11px] font-bold">
+                Scenario 3: Corporate Info
+              </div>
+              <h4 className="text-sm font-bold text-slate-900">Internal Code & Secrets</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                When debugging code containing <code className="text-purple-700 bg-white px-1 rounded">[API KEY]</code> or server passwords, secrets default to exclusion while the core programming logic is submitted to the AI.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Capabilities Section */}
+      <section className="py-20 bg-slate-50 border-t border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <span className="text-xs font-bold text-violet-600 uppercase tracking-wider">
               Versatile Assistant
             </span>
             <h2 className="text-3xl font-extrabold text-slate-900 mt-2 mb-3">
-              One Assistant. Infinite Possibilities.
+              One Assistant for Any Task
             </h2>
-            <p className="text-slate-600 text-base">
-              Whatever you are working on, NOVA AI adapts naturally to your workflow.
+            <p className="text-slate-600 text-sm">
+              Ask questions, write code, analyze data, and summarize documents with confidence.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-xs">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
               <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center mb-4">
                 <Code2 className="w-5 h-5" />
               </div>
@@ -147,7 +216,7 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-xs">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
               <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-4">
                 <BookOpen className="w-5 h-5" />
               </div>
@@ -157,7 +226,7 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-xs">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
               <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
                 <Lightbulb className="w-5 h-5" />
               </div>
@@ -167,7 +236,7 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-xs">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
                 <Compass className="w-5 h-5" />
               </div>
@@ -177,37 +246,14 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
           </div>
-
-          {/* Privacy Note */}
-          <div className="mt-14 p-5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 max-w-3xl mx-auto">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div className="text-left">
-                <h5 className="text-xs font-bold text-slate-900">
-                  Built-in Privacy-Aware Processing
-                </h5>
-                <p className="text-[11px] text-slate-500">
-                  NOVA AI runs automatic privacy detection in the backend to ensure your confidential data stays safe.
-                </p>
-              </div>
-            </div>
-
-            <Link to={isAuthenticated ? '/chat' : '/signup'} className="shrink-0">
-              <Button size="sm" variant="primary">
-                Start Chatting
-              </Button>
-            </Link>
-          </div>
         </div>
       </section>
 
-      {/* 3. Bottom CTA */}
+      {/* 4. Bottom CTA */}
       <section className="py-20 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-center">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            Start having smarter conversations today.
+            Start having smarter, safer conversations today.
           </h2>
           <p className="text-violet-100 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
             Experience a general-purpose AI assistant with privacy built in from the ground up.

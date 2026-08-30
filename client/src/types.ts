@@ -1,14 +1,11 @@
-export type NovaModelId = 'nova-smart' | 'nova-reasoning' | 'nova-fast';
+export type NovaModelId = 'nova-smart' | 'nova-reasoning' | 'nova-fast' | 'ai-assistant';
 
 export interface NovaModelConfig {
   id: NovaModelId;
   name: string;
-  tagline: string;
-  description: string;
-  badge: string;
-  speed: string;
-  intelligence: string;
-  contextWindow: string;
+  tagline?: string;
+  description?: string;
+  badge?: string;
   enabled: boolean;
 }
 

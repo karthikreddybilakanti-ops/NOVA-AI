@@ -59,14 +59,36 @@ authRouter.post('/logout', (_req: Request, res: Response): void => {
   res.json({ success: true, message: 'Session logged out successfully.' });
 });
 
-// 5. Forgot Password
-authRouter.post('/forgot-password', (req: Request, res: Response): void => {
-  const { email } = req.body;
-  if (!email) {
-    res.status(400).json({ error: 'Email address is required.' });
-    return;
+// 5. Forgot Password Request
+authRouter.post('/forgot-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, redirectTo } = req.body;
+    if (!email) {
+      res.status(400).json({ error: 'Email address is required.' });
+      return;
+    }
+    const result = await globalAuthService.requestPasswordReset(email, redirectTo);
+    res.json(result);
+  } catch (err: any) {
+    console.error('[Forgot Password Error]:', err.message);
+    res.status(400).json({ error: err.message || 'Password reset request failed.' });
   }
-  res.json({ message: 'If an account with this email exists, a password reset link has been dispatched.' });
+});
+
+// 6. Reset Password
+authRouter.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { emailOrToken, password } = req.body;
+    if (!emailOrToken || !password) {
+      res.status(400).json({ error: 'Token/Email and new password are required.' });
+      return;
+    }
+    const result = await globalAuthService.resetPassword(emailOrToken, password);
+    res.json(result);
+  } catch (err: any) {
+    console.error('[Reset Password Error]:', err.message);
+    res.status(400).json({ error: err.message || 'Password reset failed.' });
+  }
 });
 
 // 6. Get Current User Profile (Session Persistence)

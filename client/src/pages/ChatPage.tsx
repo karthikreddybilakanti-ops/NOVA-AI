@@ -15,12 +15,10 @@ import { ModelSelector } from '../components/chat/ModelSelector';
 import { ChatMessageItem } from '../components/chat/ChatMessageItem';
 import { ChatComposer } from '../components/chat/ChatComposer';
 import { ChatEmptyState } from '../components/chat/ChatEmptyState';
-import { useAuth } from '../context/AuthContext';
 
 export const ChatPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const [models, setModels] = useState<NovaModelConfig[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<NovaModelId>('nova-smart');
@@ -217,10 +215,6 @@ export const ChatPage: React.FC = () => {
                 <span>New Chat</span>
               </button>
             )}
-
-            <div className="w-7 h-7 rounded-full bg-violet-100 text-violet-700 font-bold text-xs flex items-center justify-center border border-violet-200">
-              {user?.name?.charAt(0).toUpperCase() || 'U'}
-            </div>
           </div>
         </header>
 

@@ -15,9 +15,9 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminRequestsPage } from './pages/AdminRequestsPage';
 import { AdminVerificationPage } from './pages/AdminVerificationPage';
-import { AdminModelsPage } from './pages/AdminModelsPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
-import { AdminFeedbackPage } from './pages/AdminFeedbackPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 
 // Protected Admin Route Guard
 const ProtectedAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -51,9 +51,12 @@ export function App() {
               <Route path="/how-it-works" element={<HowItWorksPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/help" element={<HelpFeedbackPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<PrivacyPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/chat/:conversationId" element={<ChatPage />} />
               <Route path="/settings" element={<SettingsPage />} />
@@ -85,26 +88,10 @@ export function App() {
                 }
               />
               <Route
-                path="/admin/models"
-                element={
-                  <ProtectedAdminRoute>
-                    <AdminModelsPage />
-                  </ProtectedAdminRoute>
-                }
-              />
-              <Route
                 path="/admin/users"
                 element={
                   <ProtectedAdminRoute>
                     <AdminUsersPage />
-                  </ProtectedAdminRoute>
-                }
-              />
-              <Route
-                path="/admin/feedback"
-                element={
-                  <ProtectedAdminRoute>
-                    <AdminFeedbackPage />
                   </ProtectedAdminRoute>
                 }
               />

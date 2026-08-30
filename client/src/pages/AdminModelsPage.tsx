@@ -74,16 +74,8 @@ export const AdminModelsPage: React.FC = () => {
 
                 <div className="space-y-2 pt-3 border-t border-slate-100 text-xs text-slate-600">
                   <div className="flex justify-between">
-                    <span>Speed Rating:</span>
-                    <strong className="text-slate-900">{model.speed}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Intelligence Tier:</span>
-                    <strong className="text-slate-900">{model.intelligence}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Context Window:</span>
-                    <strong className="text-slate-900">{model.contextWindow}</strong>
+                    <span>Engine Type:</span>
+                    <strong className="text-slate-900">General AI + Privacy Gate</strong>
                   </div>
                 </div>
               </div>
