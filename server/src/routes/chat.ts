@@ -141,14 +141,23 @@ chatRouter.post('/message', async (req: Request, res: Response): Promise<void> =
       content: m.content,
     }));
 
-    // Find active attachment from current request OR recent conversation turn
+    // Find active attachment:
+    // Only pass prior attachment if:
+    // 1) Current request has an attachment, OR
+    // 2) The user's prompt is contextually referring to the attachment/document/image
     let activeAttachment = attachment;
     if (!activeAttachment || !activeAttachment.extractedText) {
-      for (let i = existingMessages.length - 1; i >= 0; i--) {
-        const prevAtt = existingMessages[i].attachment;
-        if (prevAtt && prevAtt.extractedText && prevAtt.extractedText.trim().length > 0) {
-          activeAttachment = prevAtt;
-          break;
+      const pLower = prompt.trim().toLowerCase();
+      const isDocumentReference =
+        /\b(document|file|pdf|docx?|image|screenshot|photo|receipt|report|schedule|audit|text|attachment|page|table|chart|above|that|this|it|mentioned|summarize|explain it|error code)\b/i.test(pLower);
+
+      if (isDocumentReference) {
+        for (let i = existingMessages.length - 1; i >= 0; i--) {
+          const prevAtt = existingMessages[i].attachment;
+          if (prevAtt && prevAtt.extractedText && prevAtt.extractedText.trim().length > 0) {
+            activeAttachment = prevAtt;
+            break;
+          }
         }
       }
     }

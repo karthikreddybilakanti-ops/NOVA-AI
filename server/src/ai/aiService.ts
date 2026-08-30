@@ -270,8 +270,8 @@ export class AIService {
         return this.synthesizeSimplifiedExplanation(lastUserMsg, lastAiMsg);
       }
 
-      // User asking to convert code to another language
-      if (lower.includes('in python') || lower.includes('in java') || lower.includes('in c++') || lower.includes('in typescript') || lower.includes('in javascript')) {
+      // User asking to convert code to another language (e.g. "convert to python", "write this in java")
+      if (/\b(convert|rewrite|show\s+this|same\s+thing|translate|write\s+this|write\s+it)\s+(?:in|to)\s+(python|java|c\+\+|cpp|typescript|javascript|rust|go)\b/i.test(lower)) {
         return this.synthesizeLanguageConversion(p, lastAiMsg);
       }
 
@@ -302,7 +302,7 @@ export class AIService {
 
     // Check if extraction failed or returned empty
     if (!docText || docText.length === 0) {
-      return `I was unable to extract readable text from **"${docName}"**. Please ensure the file is not empty, password-protected, or corrupted, or try uploading in a supported format (PDF, DOCX, TXT, CSV, PNG, JPG).`;
+      return `I was unable to extract readable text from "${docName}". Please ensure the file is not empty, password-protected, or corrupted, or try uploading in a supported format (PDF, DOCX, TXT, CSV, PNG, JPG).`;
     }
 
     // Break document into distinct lines and sentences
@@ -318,11 +318,10 @@ export class AIService {
       const amountStr = amountMatch ? amountMatch[0].trim() : '';
       const reasonLine = lines.find((l) => /reason|status|error|message|declined/i.test(l)) || '';
 
-      let answer = `Based on the uploaded ${isImage ? 'screenshot' : 'document'} **"${docName}"**:\n\n`;
-      answer += `The transaction ${amountStr ? `of **${amountStr}** ` : ''}is marked as **FAILED**.\n\n`;
+      let answer = `The transaction ${amountStr ? `of **${amountStr}** ` : ''}is marked as **FAILED**.\n\n`;
 
       if (reasonLine) {
-        answer += `### Detected Status in File:\n> ${reasonLine}\n\n`;
+        answer += `### Status in File:\n> ${reasonLine}\n\n`;
       }
 
       answer += `### Probable Causes:\n` +
@@ -343,9 +342,8 @@ export class AIService {
       );
 
       if (dateLines.length > 0) {
-        return `Based on **"${docName}"**, here are the key dates and milestones identified:\n\n` +
-          dateLines.map((d) => `- **${d.replace(/^[-•\d.]*\s*/, '')}**`).join('\n') +
-          `\n\nLet me know if you would like more details about any specific phase!`;
+        return `Here are the key dates and milestones from the schedule:\n\n` +
+          dateLines.map((d) => `- **${d.replace(/^[-•\d.]*\s*/, '')}**`).join('\n');
       }
     }
 
@@ -375,9 +373,8 @@ export class AIService {
       }
 
       if (riskLines.length > 0) {
-        return `Based on **"${docName}"**, the following key risks and considerations were identified:\n\n` +
-          riskLines.map((r, i) => `${i + 1}. ${r.replace(/^\d+\.\s*/, '')}`).join('\n\n') +
-          `\n\nWould you like recommendations on how to mitigate any of these items?`;
+        return `Here are the key risks and considerations identified:\n\n` +
+          riskLines.map((r, i) => `${i + 1}. ${r.replace(/^\d+\.\s*/, '')}`).join('\n\n');
       }
     }
 
@@ -386,17 +383,11 @@ export class AIService {
       const previewSentences = sentences.slice(0, 4).join('. ');
       const keyBullets = lines.filter((l) => l.startsWith('-') || l.startsWith('•') || /^\d+\./.test(l)).slice(0, 5);
 
-      let summaryText = `**Summary of "${docName}":**\n\n` +
-        `This document covers key details regarding its subject matter. ${previewSentences ? previewSentences + '.' : ''}\n\n`;
+      let summaryText = `${previewSentences ? previewSentences + '.' : 'This document contains structured textual records and details.'}\n\n`;
 
       if (keyBullets.length > 0) {
         summaryText += `### Key Highlights:\n` + keyBullets.join('\n') + `\n\n`;
       }
-
-      summaryText += `### Document Metadata:\n` +
-        `- **Filename:** \`${docName}\`\n` +
-        `- **Content Length:** ~${docText.split(/\s+/).length} words across ${lines.length} lines\n\n` +
-        `Feel free to ask specific questions about any section of this file!`;
 
       return summaryText;
     }
@@ -414,17 +405,14 @@ export class AIService {
       });
 
       if (matchedLines.length > 0) {
-        return `Based on **"${docName}"**, here is the relevant information regarding **"${prompt}"**:\n\n` +
-          matchedLines.slice(0, 5).map((m) => `> ${m}`).join('\n\n') +
-          `\n\nLet me know if you would like me to analyze or elaborate on any specific part!`;
+        return `Here is the relevant information regarding **"${prompt}"**:\n\n` +
+          matchedLines.slice(0, 5).map((m) => `> ${m}`).join('\n\n');
       }
     }
 
     // Default grounded quote
-    return `Based on **"${docName}"**:\n\n` +
-      `The file contains the following context relevant to your request:\n\n` +
-      `> "${docText.slice(0, 350).trim()}..."\n\n` +
-      `Let me know if you would like me to extract more details or analyze a specific part!`;
+    return `Here is the relevant context from the file regarding your request:\n\n` +
+      `> "${docText.slice(0, 350).trim()}..."`;
   }
 
   /**
@@ -682,11 +670,9 @@ export class AIService {
     }
 
     // Default General Intelligent Response
-    return `${empathyPrefix}Regarding **"${p}"**:\n\n` +
-      `Here is a clear and structured breakdown:\n\n` +
-      `1. **Core Concept:** Understanding the fundamental requirements and objectives allows you to focus on the key factors driving the outcome.\n` +
-      `2. **Best Practices:** Applying modular, step-by-step validation ensures reliability and clarity.\n` +
-      `3. **Next Steps:** Depending on your specific goals, you can optimize for performance, simplify the workflow, or add targeted test cases.\n\n` +
-      `Let me know if you would like me to dive deeper into any part of this, provide code, or adapt the explanation to your exact use case!`;
+    return `${empathyPrefix}Here is a structured overview regarding **"${p}"**:\n\n` +
+      `When analyzing this subject, the most effective approach is to understand the underlying principles and their practical applications. ` +
+      `By breaking down the problem systematically and evaluating the core variables, you can determine both the standard implementation and optimal next steps.\n\n` +
+      `Let me know if you would like me to dive deeper into any specific aspect, provide targeted code, or adapt this to a particular scenario!`;
   }
 }
