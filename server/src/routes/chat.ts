@@ -140,6 +140,18 @@ chatRouter.post('/message', async (req: Request, res: Response): Promise<void> =
       content: m.content,
     }));
 
+    // Find active attachment from current request OR recent conversation turn
+    let activeAttachment = attachment;
+    if (!activeAttachment || !activeAttachment.extractedText) {
+      for (let i = existingMessages.length - 1; i >= 0; i--) {
+        const prevAtt = existingMessages[i].attachment;
+        if (prevAtt && prevAtt.extractedText && prevAtt.extractedText.trim().length > 0) {
+          activeAttachment = prevAtt;
+          break;
+        }
+      }
+    }
+
     // 3. Run through Privacy Pipeline BEFORE model receives it!
     const result = await globalPipeline.process(
       prompt.trim(),
@@ -147,7 +159,7 @@ chatRouter.post('/message', async (req: Request, res: Response): Promise<void> =
       convId,
       userId,
       history,
-      attachment
+      activeAttachment
     );
 
     // 4. Store user message using privacy-safe minimized text with attachment (Sections 12 & 19)

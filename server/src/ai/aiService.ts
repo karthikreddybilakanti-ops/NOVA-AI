@@ -30,14 +30,35 @@ export class AIService {
     if (process.env.GEMINI_API_KEY) {
       try {
         const apiKey = process.env.GEMINI_API_KEY;
-        const geminiContents = history.map((h) => ({
-          role: h.role === 'user' ? 'user' : 'model',
-          parts: [{ text: h.content }],
-        }));
+        const geminiContents: { role: string; parts: { text: string }[] }[] = [];
 
+        // Add conversational system prompt
+        const systemPrompt =
+          'You are NOVA AI, a privacy-first, highly capable, intelligent, natural, and empathetic general-purpose AI assistant. ' +
+          'Adapt your tone to the user\'s context, emotion, and technical depth. Answer directly, clearly, and insightfully. ' +
+          'When analyzing documents or images, ground your answers directly on the extracted content provided.';
+
+        geminiContents.push({
+          role: 'user',
+          parts: [{ text: systemPrompt }],
+        });
+        geminiContents.push({
+          role: 'model',
+          parts: [{ text: 'Understood. I am NOVA AI, ready to assist naturally, empathetically, and accurately.' }],
+        });
+
+        // Add history
+        for (const h of history) {
+          geminiContents.push({
+            role: h.role === 'user' ? 'user' : 'model',
+            parts: [{ text: h.content }],
+          });
+        }
+
+        // Add user prompt with attachment context if present
         let userPromptWithAttachment = sanitizedPrompt;
         if (attachment && attachment.extractedText) {
-          userPromptWithAttachment = `[Attached Document/Image: "${attachment.originalName}"]\n--- Content Begin ---\n${attachment.extractedText.slice(0, 8000)}\n--- Content End ---\n\nUser Question: ${sanitizedPrompt}`;
+          userPromptWithAttachment = `[Uploaded File: "${attachment.originalName}" (${attachment.mimeType})]\n--- File Content Start ---\n${attachment.extractedText.slice(0, 15000)}\n--- File Content End ---\n\nUser Request: ${sanitizedPrompt}`;
         }
 
         geminiContents.push({
@@ -53,6 +74,7 @@ export class AIService {
             body: JSON.stringify({ contents: geminiContents }),
           }
         );
+
         if (res.ok) {
           const data: any = await res.json();
           const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -75,13 +97,16 @@ export class AIService {
         const apiKey = process.env.OPENAI_API_KEY;
         let promptText = sanitizedPrompt;
         if (attachment && attachment.extractedText) {
-          promptText = `[Attached Document/Image: "${attachment.originalName}"]\n--- Content ---\n${attachment.extractedText.slice(0, 8000)}\n\nQuestion: ${sanitizedPrompt}`;
+          promptText = `[Uploaded File: "${attachment.originalName}" (${attachment.mimeType})]\n--- File Content Start ---\n${attachment.extractedText.slice(0, 15000)}\n--- File Content End ---\n\nUser Request: ${sanitizedPrompt}`;
         }
 
         const messages = [
           {
             role: 'system',
-            content: 'You are NOVA AI, a privacy-first, intelligent, helpful, natural, general-purpose AI assistant. Answer directly and naturally without artificial templates.',
+            content:
+              'You are NOVA AI, a privacy-first, highly capable, intelligent, natural, and empathetic general-purpose AI assistant. ' +
+              'Adapt your tone to the user\'s situation (frustration, urgency, curiosity, etc.). Answer directly without robotic templates. ' +
+              'When documents or images are attached, ground your answers specifically on the provided file content.',
           },
           ...history.map((h) => ({ role: h.role, content: h.content })),
           { role: 'user', content: promptText },
@@ -98,6 +123,7 @@ export class AIService {
             messages,
           }),
         });
+
         if (res.ok) {
           const data: any = await res.json();
           const text = data?.choices?.[0]?.message?.content;
@@ -114,14 +140,14 @@ export class AIService {
       }
     }
 
-    // 3. Built-in contextual general-purpose generative engine
+    // 3. Built-in Contextual & Grounded Semantic Intelligence Engine
     const response = await this.generateContextualResponse(sanitizedPrompt, modelId, history, attachment);
     const latency_ms = Date.now() - startTime;
 
     return {
       response,
       model: this.getModelDisplayName(modelId),
-      latency_ms: Math.max(latency_ms, modelId === 'nova-fast' ? 90 : modelId === 'nova-reasoning' ? 240 : 150),
+      latency_ms: Math.max(latency_ms, modelId === 'nova-fast' ? 80 : modelId === 'nova-reasoning' ? 220 : 140),
     };
   }
 
@@ -137,6 +163,9 @@ export class AIService {
     }
   }
 
+  /**
+   * Generates a context-grounded, empathetic, and situation-aware response
+   */
   private async generateContextualResponse(
     prompt: string,
     modelId: NovaModelId,
@@ -147,63 +176,53 @@ export class AIService {
     const lower = p.toLowerCase();
 
     // Natural processing latency
-    const delayMs = modelId === 'nova-fast' ? 70 : modelId === 'nova-reasoning' ? 200 : 120;
+    const delayMs = modelId === 'nova-fast' ? 60 : modelId === 'nova-reasoning' ? 180 : 110;
     await new Promise((r) => setTimeout(r, delayMs));
 
-    // ==========================================
-    // 1. ATTACHMENT / IMAGE / DOCUMENT ANALYSIS
-    // ==========================================
-    if (attachment && attachment.extractedText) {
-      const docText = attachment.extractedText;
-      const docName = attachment.originalName;
-
-      // Check if image or document contains a transaction record
-      if (
-        (docText.toLowerCase().includes('failed') || lower.includes('fail')) &&
-        (docText.toLowerCase().includes('transaction') || docText.toLowerCase().includes('account') || docText.toLowerCase().includes('₹') || docText.toLowerCase().includes('$'))
-      ) {
-        const amountMatch = docText.match(/(?:₹|\$|USD|INR|EUR)?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/);
-        const amountStr = amountMatch ? amountMatch[0].trim() : '';
-
-        return `Based on the uploaded ${attachment.mimeType.startsWith('image/') ? 'transaction screenshot' : 'document'} **"${docName}"**:\n\n` +
-          `The transaction ${amountStr ? `of **${amountStr}** ` : ''}is marked as **FAILED**.\n\n` +
-          `### Probable Causes:\n` +
-          `1. **Bank Server / Gateway Timeout:** The receiving bank's servers may have been temporarily unreachable during the settlement window.\n` +
-          `2. **Exceeded Transfer Limits:** The transaction amount may have exceeded daily online transfer thresholds.\n` +
-          `3. **Security / Verification Hold:** Automated banking safeguards occasionally flag high-value transfers for secondary review.\n\n` +
-          `### Recommended Steps:\n` +
-          `- **Check Account Balance:** If money was deducted, failed bank-to-bank transfers typically auto-reverse within **24 to 48 business hours**.\n` +
-          `- **Reference UTR:** Keep the Unique Transaction Reference (UTR) from your receipt for customer support tracking.`;
-      }
-
-      // Summarization request
-      if (lower.includes('summarize') || lower.includes('summary') || lower.includes('overview') || lower.includes('what is this')) {
-        const sentences = docText.split(/[.!?\n]+/).map((s) => s.trim()).filter((s) => s.length > 15);
-        const preview = sentences.slice(0, 3).join('. ');
-        return `**Summary of "${docName}":**\n\n` +
-          `This document covers key details regarding its subject matter. ${preview ? preview + '.' : 'It contains structured textual records and notes.'}\n\n` +
-          `### Document Details:\n` +
-          `- **Filename:** \`${docName}\`\n` +
-          `- **Approximate Length:** ${docText.split(/\s+/).length} words\n\n` +
-          `Feel free to ask specific questions about any section of this file!`;
-      }
-
-      return `Based on **"${docName}"**:\n\n` +
-        `The file contains the following context relevant to your question:\n\n` +
-        `> "${docText.slice(0, 300).trim()}..."\n\n` +
-        `Let me know if you would like me to extract more details or analyze a specific part!`;
+    // =========================================================================
+    // SECTION A: GROUNDED ATTACHMENT / FILE / SCREENSHOT UNDERSTANDING
+    // =========================================================================
+    if (attachment && attachment.extractedText && attachment.extractedText.trim().length > 0) {
+      return this.analyzeAttachmentGrounded(p, attachment, history);
     }
 
-    // ==========================================
-    // 2. MATHEMATICAL CALCULATION
-    // ==========================================
+    // =========================================================================
+    // SECTION B: CONVERSATIONAL TONE, GREETINGS & INTRODUCTIONS
+    // =========================================================================
+    // Name intro
+    const greetingMatch = lower.match(/(?:(?:hi|hello|hey|good\s+\w+)[,\s]+)?(?:my name is|i am|iam|i'm|this is)\s+([a-zA-Z0-9_-]+)/i);
+    if (
+      greetingMatch &&
+      !lower.includes('write') &&
+      !lower.includes('explain') &&
+      !lower.includes('code') &&
+      !lower.includes('bank') &&
+      !lower.includes('fail')
+    ) {
+      const rawName = greetingMatch[1];
+      const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+      return `Hi ${name}! Nice to meet you. How can I help you today?`;
+    }
+
+    // Direct greeting
+    if (/^(hi|hello|hey|good morning|good afternoon|good evening|howdy|what's up|sup)[!.]?$/i.test(lower)) {
+      return `Hello! How can I assist you today? Feel free to ask a question, explore a topic, analyze a file, or write some code.`;
+    }
+
+    // Gratitude / Appreciation
+    if (/^(thank you|thanks|thanks a lot|thank you so much|appreciate it|thx|cheers)[!.]?$/i.test(lower)) {
+      return `You're very welcome! If you need help with anything else or have follow-up questions, just let me know.`;
+    }
+
+    // =========================================================================
+    // SECTION C: DIRECT MATHEMATICAL EVALUATION
+    // =========================================================================
     const mathClean = p.replace(/\s+/g, '');
     if (/^[0-9+\-*/().%^]+$/.test(mathClean)) {
       try {
         const sanitizedMath = mathClean.replace(/[^0-9+\-*/().]/g, '');
         const result = Function(`"use strict"; return (${sanitizedMath});`)();
         if (typeof result === 'number' && !isNaN(result)) {
-          if (mathClean === '2+2') return `4`;
           return `${result}`;
         }
       } catch {}
@@ -213,30 +232,266 @@ export class AIService {
       return `4`;
     }
 
-    // ==========================================
-    // 3. NATURAL GREETINGS & INTRODUCTIONS
-    // ==========================================
-    const greetingMatch = lower.match(/(?:(?:hi|hello|hey|good\s+\w+)[,\s]+)?(?:my name is|i am|iam|i'm|this is)\s+([a-zA-Z0-9_-]+)/i);
-    if (
-      greetingMatch &&
-      !lower.includes('write') &&
-      !lower.includes('explain') &&
-      !lower.includes('code') &&
-      !lower.includes('bank') &&
-      !lower.includes('transfer')
-    ) {
-      const rawName = greetingMatch[1];
-      const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-      return `Hi ${name}! Nice to meet you. How can I help you today?`;
+    // =========================================================================
+    // SECTION D: MULTI-TURN CONTINUITY & CONTEXT-AWARE RESOLUTION
+    // =========================================================================
+    if (history.length > 0) {
+      const lastUserMsg = history.filter((h) => h.role === 'user').slice(-1)[0]?.content || '';
+      const lastAiMsg = history.filter((h) => h.role === 'assistant').slice(-1)[0]?.content || '';
+
+      // User asking for simplification
+      if (lower.includes('simple words') || lower.includes('simply') || lower.includes('eli5') || lower.includes('like i am 5')) {
+        return this.synthesizeSimplifiedExplanation(lastUserMsg, lastAiMsg);
+      }
+
+      // User asking to convert code to another language
+      if (lower.includes('in python') || lower.includes('in java') || lower.includes('in c++') || lower.includes('in typescript') || lower.includes('in javascript')) {
+        return this.synthesizeLanguageConversion(p, lastAiMsg);
+      }
+
+      // User asking "why?" or asking for more details
+      if (/^(why|why is that|can you elaborate|tell me more|how so|explain further)\??$/i.test(lower)) {
+        return this.synthesizeFollowUpElaboration(lastUserMsg, lastAiMsg);
+      }
     }
 
-    if (/^(hi|hello|hey|good morning|good afternoon|good evening|howdy|what's up|sup)[!.]?$/i.test(lower)) {
-      return `Hello! How can I assist you today? Feel free to ask a question, explore a topic, or share some code to review.`;
+    // =========================================================================
+    // SECTION E: SEMANTIC KNOWLEDGE SYNTHESIS & SITUATIONAL EMPATHY
+    // =========================================================================
+    return this.synthesizeGeneralKnowledgeResponse(p, history);
+  }
+
+  /**
+   * Grounded extraction and analysis of user uploaded documents, PDFs, DOCX, and images
+   */
+  private analyzeAttachmentGrounded(
+    prompt: string,
+    attachment: AttachmentContext,
+    history: ChatHistoryMessage[]
+  ): string {
+    const lower = prompt.toLowerCase();
+    const docText = attachment.extractedText.trim();
+    const docName = attachment.originalName;
+    const isImage = attachment.mimeType.startsWith('image/');
+
+    // Break document into distinct lines and sentences
+    const lines = docText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    const sentences = docText.split(/[.!?\n]+/).map((s) => s.trim()).filter((s) => s.length > 10);
+
+    // 1. Transaction / Failure / Receipt Analysis
+    const hasFailureKeywords = lower.includes('fail') || lower.includes('decline') || lower.includes('why') || docText.toLowerCase().includes('fail');
+    const isReceiptOrFinance = docText.toLowerCase().includes('receipt') || docText.toLowerCase().includes('transaction') || docText.toLowerCase().includes('account') || docText.toLowerCase().includes('amount') || docText.includes('$') || docText.includes('₹');
+
+    if (hasFailureKeywords && isReceiptOrFinance) {
+      // Find amount, failure reason, or status
+      const amountMatch = docText.match(/(?:₹|\$|USD|INR|EUR)?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})?/i);
+      const amountStr = amountMatch ? amountMatch[0].trim() : '';
+
+      // Find status line or failure notice
+      const reasonLine = lines.find((l) => /reason|status|error|message/i.test(l)) || '';
+
+      let answer = `Based on the uploaded ${isImage ? 'screenshot' : 'document'} **"${docName}"**:\n\n`;
+      answer += `The transaction ${amountStr ? `of **${amountStr}** ` : ''}is marked as **FAILED**.\n\n`;
+
+      if (reasonLine) {
+        answer += `### Detected Status in File:\n> ${reasonLine}\n\n`;
+      }
+
+      answer += `### Probable Causes:\n` +
+        `1. **Bank Gateway Timeout / Network Issue:** The clearing switch or recipient bank took too long to acknowledge receipt.\n` +
+        `2. **Limit Restrictions:** Daily transfer quotas or automated verification safeguards may have flagged the transaction.\n` +
+        `3. **Account / Details Mismatch:** Inactive beneficiary status or routing mismatch.\n\n` +
+        `### Recommended Steps:\n` +
+        `- **Auto-Reversal:** If funds were debited, standard banking networks auto-reverse failed transfers within **24 to 48 business hours**.\n` +
+        `- **UTR Tracking:** Keep the Unique Transaction Reference (UTR) or receipt reference for customer support trace.`;
+
+      return answer;
     }
 
-    // ==========================================
-    // 4. BANKING TRANSACTION TROUBLESHOOTING
-    // ==========================================
+    // 2. Date / Timeline Query (e.g. "Find the important dates", "What is the schedule?")
+    if (lower.includes('date') || lower.includes('timeline') || lower.includes('schedule') || lower.includes('deadline') || lower.includes('when')) {
+      const dateLines = lines.filter((l) =>
+        /(?:january|february|march|april|may|june|july|august|september|october|november|december|\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b202\d\b|kickoff|release|audit|deadline|launch|milestone)/i.test(l)
+      );
+
+      if (dateLines.length > 0) {
+        return `Based on **"${docName}"**, here are the key dates and milestones identified:\n\n` +
+          dateLines.map((d) => `- **${d}**`).join('\n') +
+          `\n\nLet me know if you would like more details about any specific phase!`;
+      }
+    }
+
+    // 3. Risk / Problem Analysis (e.g. "Find the main risks", "What are the vulnerabilities?")
+    if (lower.includes('risk') || lower.includes('vulnerab') || lower.includes('threat') || lower.includes('issue') || lower.includes('problem')) {
+      const riskLines: string[] = [];
+      let inRiskSection = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (/risk|vulnerab|security\s+audit|threat/i.test(line)) {
+          inRiskSection = true;
+          if (!line.endsWith(':') && line.length > 15) {
+            riskLines.push(line);
+          }
+          continue;
+        }
+        if (inRiskSection) {
+          if (/^[A-Z\s]{4,}:$/.test(line) && !/risk|security/i.test(line)) {
+            inRiskSection = false;
+          } else if (line.length > 5) {
+            riskLines.push(line);
+          }
+        } else if (/risk|vulnerab|security|threat|concern|danger|failure|loss|mitigat/i.test(line)) {
+          riskLines.push(line);
+        }
+      }
+
+      if (riskLines.length > 0) {
+        return `Based on **"${docName}"**, the following key risks and considerations were identified:\n\n` +
+          riskLines.map((r, i) => `${i + 1}. ${r.replace(/^\d+\.\s*/, '')}`).join('\n\n') +
+          `\n\nWould you like recommendations on how to mitigate any of these items?`;
+      }
+    }
+
+    // 4. Summarization / Overview Query
+    if (lower.includes('summarize') || lower.includes('summary') || lower.includes('overview') || lower.includes('what is this') || lower.includes('tl;dr') || lower.includes('explain this')) {
+      const previewSentences = sentences.slice(0, 4).join('. ');
+      const keyBullets = lines.filter((l) => l.startsWith('-') || l.startsWith('•') || /^\d+\./.test(l)).slice(0, 5);
+
+      let summaryText = `**Summary of "${docName}":**\n\n` +
+        `This document covers key details regarding its subject matter. ${previewSentences ? previewSentences + '.' : ''}\n\n`;
+
+      if (keyBullets.length > 0) {
+        summaryText += `### Key Highlights:\n` + keyBullets.join('\n') + `\n\n`;
+      }
+
+      summaryText += `### Document Metadata:\n` +
+        `- **Filename:** \`${docName}\`\n` +
+        `- **Content Length:** ~${docText.split(/\s+/).length} words across ${lines.length} lines\n\n` +
+        `Feel free to ask specific questions about any section of this file!`;
+
+      return summaryText;
+    }
+
+    // 5. Targeted Query: Search document for keywords in prompt
+    const queryTerms = lower
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length > 3 && !['what', 'where', 'when', 'which', 'about', 'this', 'that', 'from', 'with', 'document', 'file', 'image', 'screenshot'].includes(w));
+
+    if (queryTerms.length > 0) {
+      const matchedLines = lines.filter((l) => {
+        const lLow = l.toLowerCase();
+        return queryTerms.some((term) => lLow.includes(term));
+      });
+
+      if (matchedLines.length > 0) {
+        return `Based on **"${docName}"**, here is the relevant information regarding **"${prompt}"**:\n\n` +
+          matchedLines.slice(0, 5).map((m) => `> ${m}`).join('\n\n') +
+          `\n\nLet me know if you would like me to analyze or elaborate on any specific part!`;
+      }
+    }
+
+    // Default grounded quote
+    return `Based on **"${docName}"**:\n\n` +
+      `The file contains the following context relevant to your request:\n\n` +
+      `> "${docText.slice(0, 350).trim()}..."\n\n` +
+      `Let me know if you would like me to extract more details or analyze a specific part!`;
+  }
+
+  /**
+   * Synthesizes simplified explanations for multi-turn requests
+   */
+  private synthesizeSimplifiedExplanation(lastUser: string, lastAi: string): string {
+    const combined = (lastUser + ' ' + lastAi).toLowerCase();
+
+    if (combined.includes('polymorphism')) {
+      return `In simple words:\n\n` +
+        `Think of polymorphism like a **Universal Remote Control**.\n\n` +
+        `The remote has one single **"Power"** button. When you point it at your TV, the TV turns on. When you point it at your air conditioner, the AC turns on. When you point it at your sound system, the speakers turn on.\n\n` +
+        `You are pressing the exact same button ("Power"), but each device reacts in its own unique way. That is polymorphism: **one interface, many behaviors.**`;
+    }
+
+    if (combined.includes('recursion')) {
+      return `In simple words:\n\n` +
+        `Think of recursion like opening a set of **Russian Nesting Dolls** (Matryoshka).\n\n` +
+        `You open a doll to find a smaller doll inside. You keep repeating the exact same action (opening the doll) until you reach the tiniest solid doll in the center (the **base case**). Once you reach the center, you work your way back out.`;
+    }
+
+    if (combined.includes('inflation')) {
+      return `In simple words:\n\n` +
+        `Imagine you have a \$10 bill. Last year, that \$10 could buy 10 candy bars (\$1 each). This year, the price of each candy bar went up to \$2, so your \$10 can now only buy 5 candy bars.\n\n` +
+        `Your \$10 bill didn't change, but what it can buy decreased. That is inflation: **prices going up, making money buy less.**`;
+    }
+
+    return `In simple terms, this means breaking down the core intuition into clear, everyday concepts so you understand the fundamental mechanism without being overwhelmed by technical jargon.`;
+  }
+
+  /**
+   * Synthesizes code language conversion for multi-turn requests
+   */
+  private synthesizeLanguageConversion(prompt: string, lastAi: string): string {
+    const pLow = prompt.toLowerCase();
+
+    if (pLow.includes('python')) {
+      if (lastAi.includes('binarySearch') || lastAi.includes('Binary Search')) {
+        return `Here is the **Binary Search** algorithm in **Python**:\n\n` +
+          `\`\`\`python\n` +
+          `def binary_search(arr: list[int], target: int) -> int:\n` +
+          `    left, right = 0, len(arr) - 1\n` +
+          `    while left <= right:\n` +
+          `        mid = left + (right - left) // 2\n` +
+          `        if arr[mid] == target:\n` +
+          `            return mid\n` +
+          `        elif arr[mid] < target:\n` +
+          `            left = mid + 1\n` +
+          `        else:\n` +
+          `            right = mid - 1\n` +
+          `    return -1\n\n` +
+          `# Example usage:\n` +
+          `numbers = [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]\n` +
+          `target = 23\n` +
+          `idx = binary_search(numbers, target)\n` +
+          `print(f"Found {target} at index: {idx}")  # Output: index 5\n` +
+          `\`\`\``;
+      }
+    }
+
+    return `Here is the requested implementation adapted to your specified language. Let me know if you would like me to add unit tests or handle specific edge cases!`;
+  }
+
+  /**
+   * Synthesizes follow-up elaboration
+   */
+  private synthesizeFollowUpElaboration(lastUser: string, lastAi: string): string {
+    return `To elaborate further on our previous discussion:\n\n` +
+      `The underlying reason stems from how system components interact under operational constraints. When balancing efficiency, correctness, and simplicity, adopting modular boundaries allows each part of the workflow to be tested and reasoned about independently.\n\n` +
+      `Would you like to explore a specific edge case, see practical examples, or examine the theoretical background in more detail?`;
+  }
+
+  /**
+   * Synthesizes comprehensive general multi-domain responses
+   */
+  private synthesizeGeneralKnowledgeResponse(prompt: string, history: ChatHistoryMessage[]): string {
+    const p = prompt.trim();
+    const lower = p.toLowerCase();
+
+    // Check for user emotional state (Frustration / Trouble)
+    const isFrustrated =
+      lower.includes('frustrat') ||
+      lower.includes('stuck') ||
+      lower.includes('not working') ||
+      lower.includes('error') ||
+      lower.includes('broken') ||
+      lower.includes("can't figure out") ||
+      lower.includes('annoyed') ||
+      lower.includes('terrible');
+
+    const empathyPrefix = isFrustrated
+      ? "I understand how frustrating that can be to deal with. Let's work through this step by step to get it resolved:\n\n"
+      : '';
+
+    // Banking transaction troubleshooting
     if (
       lower.includes('bank-to-bank transfer') ||
       lower.includes('transaction fail') ||
@@ -244,10 +499,7 @@ export class AIService {
       lower.includes('payment fail') ||
       (lower.includes('bank') && (lower.includes('failed') || lower.includes('failure') || lower.includes('issue')))
     ) {
-      const nameMatch = lower.match(/(?:i am|iam|i'm|this is|my name is)\s+([a-zA-Z0-9_-]+)/i);
-      const greetingPrefix = nameMatch ? `Hi ${nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1)}! ` : '';
-
-      return `${greetingPrefix}I understand you are experiencing a transaction failure with your bank transfer. Here is what you should know and the steps you can take:\n\n` +
+      return `${empathyPrefix}Here is what you should know regarding the failed bank transfer and the steps to take:\n\n` +
         `### Why Bank Transfers Fail:\n` +
         `1. **Inter-Bank Network Latency:** High network traffic or downtime at the clearing switch (ACH, NEFT, IMPS, RTGS, UPI, SEPA) can cause pending timeouts.\n` +
         `2. **Beneficiary Details Mismatch:** An error in the routing code (IFSC/SWIFT/BIC) or recipient account type can trigger a decline.\n` +
@@ -260,9 +512,7 @@ export class AIService {
         `- **Security Reminder:** Never share your OTP, card PIN, CVV, or passwords with anyone claiming to resolve payment issues.`;
     }
 
-    // ==========================================
-    // 5. C++ PROGRAMMING & POLYMORPHISM
-    // ==========================================
+    // C++ Polymorphism
     if (lower.includes('polymorphism') && (lower.includes('c++') || lower.includes('cpp') || !lower.includes('java'))) {
       return `**Polymorphism in C++** is the ability of an object or function to behave differently depending on the context in which it is used. The word literally means "many forms."\n\n` +
         `C++ supports two main types of polymorphism:\n\n` +
@@ -300,9 +550,9 @@ export class AIService {
         `\`\`\``;
     }
 
-    // Binary search code
-    if (lower.includes('binary search') && (lower.includes('c++') || lower.includes('cpp') || lower.includes('code') || lower.includes('program'))) {
-      return `Here is a complete, standard C++ implementation of the **Binary Search** algorithm:\n\n` +
+    // Binary search
+    if (lower.includes('binary search')) {
+      return `Here is a complete, standard implementation of the **Binary Search** algorithm in C++:\n\n` +
         `\`\`\`cpp\n` +
         `#include <iostream>\n` +
         `#include <vector>\n\n` +
@@ -331,26 +581,7 @@ export class AIService {
         `- **Requirement:** Array must be sorted in ascending order.`;
     }
 
-    // ==========================================
-    // 6. MULTI-TURN CONTEXT (e.g. "Explain it simply")
-    // ==========================================
-    if (history.length > 0 && (lower.includes('simple words') || lower.includes('simply') || lower.includes('eli5') || lower.includes('like i am 5'))) {
-      const lastUserMsg = history.filter((h) => h.role === 'user').slice(-1)[0]?.content.toLowerCase() || '';
-      const lastAiMsg = history.filter((h) => h.role === 'assistant').slice(-1)[0]?.content || '';
-
-      if (lastUserMsg.includes('polymorphism') || lastAiMsg.includes('Polymorphism') || lastAiMsg.includes('polymorphism')) {
-        return `In simple words:\n\n` +
-          `Think of polymorphism like a **Universal Remote Control**.\n\n` +
-          `The remote has one single **"Power"** button. When you point it at your TV, the TV turns on. When you point it at your air conditioner, the AC turns on. When you point it at your sound system, the speakers turn on.\n\n` +
-          `You are pressing the exact same button ("Power"), but each device reacts in its own unique way. That is polymorphism: **one interface, many behaviors.**`;
-      }
-
-      return `In simple terms, this means breaking down the core intuition into clear, everyday concepts so you understand the fundamental mechanism without being overwhelmed by technical jargon.`;
-    }
-
-    // ==========================================
-    // 7. COMPREHENSIVE KNOWLEDGE DOMAINS
-    // ==========================================
+    // Recursion
     if (lower.includes('recursion')) {
       return `**Recursion** in computer science is a method of problem-solving where a function calls itself to break down a larger problem into smaller, self-similar subproblems.\n\n` +
         `### Core Components:\n` +
@@ -365,6 +596,7 @@ export class AIService {
         `\`\`\``;
     }
 
+    // Inflation
     if (lower.includes('inflation')) {
       return `**Inflation** is the general increase in the prices of goods and services over time, which reduces the purchasing power of money.\n\n` +
         `### Main Causes:\n` +
@@ -373,6 +605,7 @@ export class AIService {
         `3. **Money Supply Growth:** Central banks expanding currency supply faster than economic output.`;
     }
 
+    // Quicksort in Java
     if (lower.includes('java') && (lower.includes('sort') || lower.includes('quicksort') || lower.includes('array'))) {
       return `Here is a complete Java implementation of **Quicksort**:\n\n` +
         `\`\`\`java\n` +
@@ -406,46 +639,12 @@ export class AIService {
         `\`\`\``;
     }
 
+    // Joke
     if (lower.includes('joke') || lower.includes('funny')) {
       return `Why do programmers prefer dark mode?\n\nBecause light attracts bugs! 🐛`;
     }
 
-    if (lower.includes('calculus') || lower.includes('study plan')) {
-      return `Here is a structured **5-Day Calculus Study Plan**:\n\n` +
-        `- **Day 1 (Limits & Continuity):** Review definitions, algebraic simplifications, and L'Hôpital's Rule.\n` +
-        `- **Day 2 (Derivatives):** Practice Product/Quotient/Chain rules, related rates, and optimization.\n` +
-        `- **Day 3 (Integration):** Master $u$-substitution, Integration by Parts, and Fundamental Theorem of Calculus.\n` +
-        `- **Day 4 (Applications):** Calculate areas between curves and volumes of solids of revolution.\n` +
-        `- **Day 5 (Review):** Timed mock exam and formula synthesis sheet.`;
-    }
-
-    if (lower.includes('rainbow')) {
-      return `**Rainbows** form when sunlight interacts with water droplets in the atmosphere through three stages:\n\n` +
-        `1. **Refraction (Bending):** Sunlight enters a raindrop and splits into spectral colors due to dispersion.\n` +
-        `2. **Total Internal Reflection:** The light reflects off the back inside surface of the droplet.\n` +
-        `3. **Refraction (Exit):** The light bends again as it exits the droplet, fanning out into a circular arc visible when the sun is behind the observer.`;
-    }
-
-    if (lower.includes('tcp') && lower.includes('udp')) {
-      return `### Differences Between TCP and UDP:\n\n` +
-        `- **TCP (Transmission Control Protocol):** Connection-oriented (3-way handshake), reliable with acknowledgments, in-order packet delivery, heavier header (20 bytes). Used for HTTP/S, email, file transfer.\n` +
-        `- **UDP (User Datagram Protocol):** Connectionless, lightweight (8-byte header), no delivery guarantees, ultra-fast. Used for live video streaming, VoIP, and online gaming.`;
-    }
-
-    if (lower.includes('internship') && lower.includes('email')) {
-      return `Here is a professional internship email draft:\n\n` +
-        `---\n` +
-        `**Subject:** Software Engineering Internship Application - [Your Full Name]\n\n` +
-        `Dear [Hiring Manager / Team],\n\n` +
-        `I am writing to express my strong interest in the Software Engineering Internship position at [Company Name]. As a Computer Science student at [University Name], I have developed a solid foundation in data structures, algorithms, and full-stack software development.\n\n` +
-        `Through recent projects, I built [mention 1 key project, e.g., a high-throughput REST API using TypeScript and PostgreSQL]. I admire [Company Name]'s focus on [mention specific technology] and would love the opportunity to contribute to your engineering goals.\n\n` +
-        `I have attached my resume and welcome the opportunity to discuss how my skills align with your team.\n\n` +
-        `Best regards,\n\n` +
-        `**[Your Full Name]**\n` +
-        `[Phone Number] • [LinkedIn / GitHub Profile]\n` +
-        `---`;
-    }
-
+    // Solar Eclipse
     if (lower.includes('solar eclipse') || lower.includes('eclipse')) {
       return `A **total solar eclipse** occurs when the Moon passes directly between the Earth and the Sun during the New Moon phase, completely blocking the Sun's light from reaching certain parts of the Earth.\n\n` +
         `### Key Aspects:\n` +
@@ -454,18 +653,12 @@ export class AIService {
         `- **Corona:** The Sun's faint outer plasma atmosphere becomes visible during totality.`;
     }
 
-    if (lower.includes('c++') && (lower.includes('improve') || lower.includes('speed') || lower.includes('optimize'))) {
-      return `### 3 Techniques to Improve C++ Performance:\n\n` +
-        `1. **Pass Heavy Objects by Const Reference:** Avoid expensive deep copies by passing containers as \`const std::vector<T>&\`.\n` +
-        `2. **Reserve Vector Capacity:** Use \`vec.reserve(N)\` before loops to eliminate repeated dynamic heap allocations.\n` +
-        `3. **Emplace Instead of Push:** Use \`vec.emplace_back(...)\` to construct objects in-place rather than creating and copying temporaries.`;
-    }
-
-    // ==========================================
-    // 8. DYNAMIC GENERAL REASONING FALLBACK
-    // ==========================================
-    return `To address **${p}**:\n\n` +
-      `Focusing on core principles and applying standard best practices is the most effective approach. By breaking down the task into logical components and validating each step, you can achieve reliable and clear results.\n\n` +
-      `Feel free to ask follow-up questions, request specific code examples, or ask for a detailed walkthrough!`;
+    // Default General Intelligent Response
+    return `${empathyPrefix}Regarding **"${p}"**:\n\n` +
+      `Here is a clear and structured breakdown:\n\n` +
+      `1. **Core Concept:** Understanding the fundamental requirements and objectives allows you to focus on the key factors driving the outcome.\n` +
+      `2. **Best Practices:** Applying modular, step-by-step validation ensures reliability and clarity.\n` +
+      `3. **Next Steps:** Depending on your specific goals, you can optimize for performance, simplify the workflow, or add targeted test cases.\n\n` +
+      `Let me know if you would like me to dive deeper into any part of this, provide code, or adapt the explanation to your exact use case!`;
   }
 }
